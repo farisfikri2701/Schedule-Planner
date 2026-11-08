@@ -1,0 +1,3275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Academic & Productivity Schedule Planner</title>
+  <meta name="theme-color" content="#0ea5e9">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Planner">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="./app-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./app-icon.svg">
+  <!-- Google Fonts & Tailwind CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    window.tailwind = window.tailwind || { config: {} };
+    window.lucide = window.lucide || { createIcons() {} };
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f0fdfa',
+              100: '#ccfbf1',
+              200: '#99f6e4',
+              300: '#5eead4',
+              400: '#2dd4bf',
+              500: '#14b8a6',
+              600: '#0d9488',
+              700: '#0f766e',
+            },
+            skybrand: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              200: '#bae6fd',
+              300: '#7dd3fc',
+              400: '#38bdf8',
+              500: '#0ea5e9',
+              600: '#0284c7',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(14, 165, 233, 0.28);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(14, 165, 233, 0.45);
+    }
+
+    /* Ambient background in light blue & mint green */
+    .bg-mesh-soft {
+      background-color: #f6fbfa;
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(224, 242, 254, 0.7) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(204, 251, 241, 0.6) 0px, transparent 40%),
+        radial-gradient(at 50% 100%, rgba(240, 253, 250, 0.8) 0px, transparent 50%);
+      background-attachment: fixed;
+    }
+
+    .dark .bg-mesh-soft {
+      background-color: #0b131e;
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(14, 116, 144, 0.2) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(13, 148, 136, 0.18) 0px, transparent 40%),
+        radial-gradient(at 50% 100%, rgba(15, 23, 42, 0.6) 0px, transparent 50%);
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+
+    .timetable-grid {
+      --time-column-width: 84px;
+      display: grid;
+      grid-template-columns: var(--time-column-width) repeat(7, minmax(0, 1fr));
+    }
+
+    #weekGridRows {
+      --time-column-width: 84px;
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    .dark .glass-card {
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-color: rgba(51, 65, 85, 0.6) !important;
+    }
+
+    #todoSidebar {
+      transition: transform 220ms ease;
+    }
+
+    #todoSidebar.todo-sidebar-closed {
+      transform: translateX(105%);
+      visibility: hidden;
+    }
+
+    #todoBackdrop {
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 180ms ease, visibility 180ms ease;
+    }
+
+    #todoBackdrop.todo-backdrop-open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    #countdownDropdown {
+      width: min(360px, calc(100vw - 1.5rem));
+      max-height: min(65vh, 480px);
+    }
+
+    #installAppBtn.hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 1024px) {
+      .timetable-grid {
+        --time-column-width: 58px;
+      }
+
+      #weekGridRows {
+        --time-column-width: 58px;
+      }
+
+      #weekViewContainer .overflow-x-auto {
+        overflow-x: hidden;
+      }
+
+      #weekHeaders {
+        font-size: 10px;
+      }
+
+      #weekGridRows > .timetable-grid > div:first-child {
+        padding: 3px 1px;
+        font-size: 9px;
+      }
+
+      #weekGridRows > div[style*="position: absolute"] > div {
+        padding: 3px 2px;
+      }
+
+      #weekGridRows > div[style*="position: absolute"] > div > .class-event-time-row,
+      #weekGridRows > div[style*="position: absolute"] > div > .note-event-time-row {
+        font-size: 7px;
+        gap: 1px;
+      }
+
+      #weekGridRows > div[style*="position: absolute"] > div > .class-event-title,
+      #weekGridRows > div[style*="position: absolute"] > div > .note-event-title {
+        font-size: 8px;
+        overflow-wrap: anywhere;
+      }
+
+      #weekGridRows > div[style*="position: absolute"] > div > .class-event-details,
+      #weekGridRows > div[style*="position: absolute"] > div > .note-event-details {
+        font-size: 6px;
+      }
+
+      #todoSidebar {
+        width: min(360px, calc(100vw - 1rem));
+      }
+    }
+
+    @media (max-width: 640px) {
+      .timetable-grid {
+        --time-column-width: 38px;
+      }
+
+      #weekGridRows {
+        --time-column-width: 38px;
+      }
+
+      #weekViewContainer .overflow-x-auto {
+        overflow: visible;
+      }
+
+      #weekHeaders {
+        font-size: 8px;
+      }
+
+      #weekGridRows > .timetable-grid {
+        min-height: 54px;
+      }
+
+      #weekGridRows > .timetable-grid > div:first-child {
+        font-size: 7px;
+        line-height: 1.1;
+        overflow-wrap: anywhere;
+      }
+
+      #weekGridRows > .timetable-grid > div:not(:first-child) {
+        padding: 0;
+      }
+
+      #weekGridRows > div[style*="position: absolute"] {
+        padding: 1px;
+        gap: 1px;
+        border-radius: 6px;
+      }
+
+      #weekGridRows > div[style*="position: absolute"] > div {
+        padding: 2px 1px;
+        border-radius: 4px;
+      }
+
+      #weekGridRows > div[style*="position: absolute"] > div > .class-event-time-row,
+      #weekGridRows > div[style*="position: absolute"] > div > .note-event-time-row {
+        display: block;
+        font-size: 6px;
+        overflow-wrap: anywhere;
+      }
+
+      #weekGridRows > div[style*="position: absolute"] > div > .class-event-time-row span:last-child,
+      #weekGridRows > div[style*="position: absolute"] > div > .note-event-time-row span:last-child {
+        display: block;
+        font-size: 6px;
+      }
+
+      #weekGridRows > div[style*="position: absolute"] > div > .class-event-title,
+      #weekGridRows > div[style*="position: absolute"] > div > .note-event-title {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        overflow: hidden;
+        font-size: 7px;
+        line-height: 1.1;
+      }
+
+      #weekGridRows > div[style*="position: absolute"] > div > .class-event-details,
+      #weekGridRows > div[style*="position: absolute"] > div > .note-event-details {
+        display: none;
+      }
+
+      #weekGridRows > div[style*="position: absolute"] > div > .class-status-badge {
+        max-width: 100%;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        font-size: 5px;
+      }
+
+      #weekGridRows > div[style*="position: absolute"] > div > .class-status-note {
+        font-size: 6px;
+        line-height: 1.1;
+      }
+
+      #todoSidebar {
+        width: min(360px, calc(100vw - 1rem));
+      }
+    }
+  </style>
+</head>
+<body class="bg-mesh-soft min-h-screen text-slate-800 dark:text-slate-100 antialiased flex flex-col font-sans transition-colors duration-200">
+
+  <!-- Main Top Bar -->
+  <header class="sticky top-0 z-40 glass-card border-b border-sky-100/90 dark:border-slate-800 px-3 sm:px-5 py-3 shadow-xs">
+    <div class="w-full flex flex-wrap items-center justify-between gap-3">
+      
+      <!-- Logo & Dynamic Academic Week Indicator -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-sky-500 to-teal-500 text-white flex items-center justify-center shadow-md shadow-sky-200 dark:shadow-none flex-shrink-0">
+          <i data-lucide="calendar" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <h1 class="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white">
+              Schedule Planner
+            </h1>
+            <!-- Dynamic Current Academic Week Pill -->
+            <span id="headerWeekBadge" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shadow-2xs">
+              Week 1 of 14
+            </span>
+          </div>
+          <p id="headerSubText" class="text-xs text-slate-500 dark:text-slate-400">
+            Teaching & Learning Activities • Trimester 2026/2027
+          </p>
+        </div>
+      </div>
+
+      <!-- Quick Add, Dark/Light Mode & Actions -->
+      <div class="w-full sm:w-auto min-w-0 max-w-full flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+        <div id="countdownWidget" class="relative">
+          <button id="countdownToggle" type="button" onclick="toggleCountdownDropdown()" aria-controls="countdownDropdown" aria-expanded="false" disabled class="inline-flex max-w-full items-center gap-1.5 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 px-2.5 py-2 text-[10px] sm:text-xs font-bold text-amber-800 dark:text-amber-200 disabled:cursor-default disabled:opacity-70">
+            <i data-lucide="timer" class="w-4 h-4 shrink-0"></i>
+            <span id="countdownLabel" class="truncate">Deadlines</span>
+            <span id="countdownTimer" class="shrink-0 tabular-nums">No upcoming</span>
+            <span id="countdownCount" class="hidden shrink-0 rounded-full bg-amber-200 dark:bg-amber-900 px-1.5 py-0.5 text-[9px]"></span>
+          </button>
+          <div id="countdownDropdown" class="hidden absolute top-full right-0 mt-2 z-[60] overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 shadow-2xl">
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <h2 class="text-xs font-bold text-slate-800 dark:text-slate-100">Upcoming deadlines</h2>
+              <span id="countdownDropdownCount" class="text-[10px] text-slate-500 dark:text-slate-400"></span>
+            </div>
+            <div id="countdownItems" class="space-y-2"></div>
+          </div>
+        </div>
+
+        <!-- Theme Toggle Button -->
+        <button onclick="toggleDarkMode()" id="themeToggleBtn" aria-label="Toggle theme" class="p-2 text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-teal-300 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs transition active:scale-95" title="Toggle Light/Dark Theme">
+          <i id="themeIcon" data-lucide="moon" class="w-4 h-4"></i>
+        </button>
+
+        <button onclick="openModalForDate(getISODate(currentViewDate))" class="flex items-center gap-2 px-3.5 py-2 bg-gradient-to-r from-sky-500 to-teal-600 hover:from-sky-600 hover:to-teal-700 text-white rounded-xl shadow-sm text-xs sm:text-sm font-semibold transition active:scale-95">
+          <i data-lucide="plus-circle" class="w-4 h-4"></i>
+          <span>Add Note/Task</span>
+        </button>
+        <button onclick="openScheduleForm()" class="flex items-center gap-2 px-3.5 py-2 bg-white dark:bg-slate-800 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 rounded-xl shadow-sm text-xs sm:text-sm font-semibold transition active:scale-95 hover:bg-teal-50 dark:hover:bg-slate-700">
+          <i data-lucide="calendar-plus" class="w-4 h-4"></i>
+          <span>Add Schedule</span>
+        </button>
+        <button id="todoSidebarToggle" onclick="toggleTodoSidebar()" aria-controls="todoSidebar" aria-expanded="false" class="flex items-center gap-2 px-3.5 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl text-xs sm:text-sm font-semibold transition active:scale-95">
+          <i data-lucide="list-todo" class="w-4 h-4"></i>
+          <span>To-do</span>
+        </button>
+        <button id="installAppBtn" onclick="installPlannerApp()" class="hidden flex items-center gap-2 px-3.5 py-2 bg-slate-900 dark:bg-slate-700 text-white rounded-xl shadow-sm text-xs sm:text-sm font-semibold transition active:scale-95">
+          <i data-lucide="download" class="w-4 h-4"></i>
+          <span>Install app</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Main Content Layout -->
+  <main class="flex-1 w-full mx-auto p-2 sm:p-4 lg:p-5">
+    <div>
+    <div class="flex flex-col gap-4 min-w-0">
+
+    <!-- Unified Schedule Control Bar -->
+    <div class="glass-card relative z-20 p-3 sm:p-4 rounded-2xl border border-sky-100 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+      
+      <!-- Date Navigation & Jump Controls -->
+      <div id="dateNavigationControls" class="flex items-center flex-wrap gap-2 sm:gap-3">
+        <button onclick="navToday()" class="px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-teal-400 text-slate-700 dark:text-slate-200 shadow-2xs hover:bg-teal-50/40 dark:hover:bg-slate-700/50 transition active:scale-95">
+          Today
+        </button>
+        <div class="flex items-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xs p-0.5">
+          <button onclick="navPrev()" class="p-1.5 text-slate-600 dark:text-slate-300 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-50 dark:hover:bg-slate-700 rounded-lg transition" title="Previous">
+            <i data-lucide="chevron-left" class="w-4 h-4"></i>
+          </button>
+          <button onclick="navNext()" class="p-1.5 text-slate-600 dark:text-slate-300 hover:text-teal-700 dark:hover:text-teal-300 hover:bg-teal-50 dark:hover:bg-slate-700 rounded-lg transition" title="Next">
+            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+          </button>
+        </div>
+        <h2 id="viewHeading" class="text-sm sm:text-base md:text-lg font-bold tracking-tight text-slate-900 dark:text-white ml-1">
+          November 2026
+        </h2>
+      </div>
+
+      <details id="timetableFilters" class="relative hidden">
+        <summary class="flex cursor-pointer list-none items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs hover:border-sky-300 dark:hover:border-teal-500">
+          <i data-lucide="sliders-horizontal" class="h-4 w-4 text-sky-600 dark:text-teal-400"></i>
+          <span>Timetable filters</span>
+          <span id="timetableFilterSummary" class="text-[10px] text-slate-500 dark:text-slate-400"></span>
+        </summary>
+        <div class="absolute left-0 top-full z-[60] mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 shadow-xl">
+          <div class="flex items-center justify-between gap-2">
+            <h3 class="text-xs font-bold text-slate-800 dark:text-slate-100">Show days</h3>
+            <div class="flex gap-2">
+              <button type="button" onclick="setTimetableDays([0,1,2,3,4])" class="text-[10px] font-semibold text-sky-700 dark:text-teal-300">Weekdays</button>
+              <button type="button" onclick="setTimetableDays([0,1,2,3,4,5,6])" class="text-[10px] font-semibold text-sky-700 dark:text-teal-300">All</button>
+            </div>
+          </div>
+          <div id="timetableDayFilters" class="mt-2 grid grid-cols-2 gap-1.5"></div>
+          <div class="mt-3 border-t border-slate-100 dark:border-slate-800 pt-3">
+            <h3 class="text-xs font-bold text-slate-800 dark:text-slate-100">Time range</h3>
+            <div class="mt-2 grid grid-cols-2 gap-2">
+              <label class="text-[10px] font-semibold text-slate-500 dark:text-slate-400">From
+                <select id="timetableStartHour" onchange="setTimetableTimeRange()" class="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-2 text-xs text-slate-700 dark:text-slate-200"></select>
+              </label>
+              <label class="text-[10px] font-semibold text-slate-500 dark:text-slate-400">To
+                <select id="timetableEndHour" onchange="setTimetableTimeRange()" class="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-2 text-xs text-slate-700 dark:text-slate-200"></select>
+              </label>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- Controls: Filter by Group & View Toggle -->
+      <div class="flex items-center flex-wrap gap-2 sm:gap-2.5">
+        
+        <!-- Filter by Group: Clean select to completely prevent layout clashes & overlap issues -->
+        <div class="relative flex items-center">
+          <i data-lucide="filter" class="w-3.5 h-3.5 text-sky-600 dark:text-teal-400 absolute left-3 pointer-events-none z-10"></i>
+          <select id="courseFilterSelect" onchange="setCourseFilterFromSelect(this.value)" class="pl-8 pr-8 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-sky-300 dark:hover:border-teal-400 shadow-2xs transition appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-sky-400 max-w-[190px] sm:max-w-[260px] truncate">
+            <option value="ALL">All Groups & Notes</option>
+            <option value="CCS6314">CRYPTOGRAPHY & DATA SECURITY</option>
+            <option value="CCS6334">DIGITAL & COMPUTER FORENSICS</option>
+            <option value="COB6223">ORGANISATIONAL BEHAVIOUR</option>
+            <option value="MESF6223">INFORMATION VISUALIZATION</option>
+            <option value="Auralis Marketing">Auralis Marketing</option>
+            <option value="Syncronym">Syncronym</option>
+            <option value="General">General</option>
+          </select>
+          <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400 absolute right-2.5 pointer-events-none"></i>
+        </div>
+
+        <!-- View Mode Switcher: Timetable Default -->
+        <div class="flex items-center bg-slate-100/90 dark:bg-slate-800 p-1 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300">
+          <button id="viewBtnWeek" onclick="switchView('week')" class="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-700 shadow-xs text-sky-700 dark:text-teal-300 font-bold transition">
+            Timetable
+          </button>
+          <button id="viewBtnMonth" onclick="switchView('month')" class="px-3 py-1.5 rounded-lg hover:text-sky-700 dark:hover:text-teal-300 transition">
+            Month
+          </button>
+          <button id="viewBtnBoard" onclick="switchView('board')" class="hidden px-3 py-1.5 rounded-lg hover:text-sky-700 dark:hover:text-teal-300 transition">
+            Board
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- VIEW 1: WEEK TIMETABLE (Opens First) -->
+    <div id="weekViewContainer" class="glass-card rounded-2xl border border-sky-100 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col">
+      <!-- Responsive Horizontal Scroll Container for Timetable -->
+      <div class="overflow-x-auto overscroll-x-contain touch-pan-x w-full">
+        <div class="w-full min-w-0">
+          <!-- Day headers -->
+          <div id="weekHeaders" class="timetable-grid border-b border-slate-200/90 dark:border-slate-700 bg-slate-50/90 dark:bg-slate-800/90 text-center text-xs font-semibold text-slate-700 dark:text-slate-200 py-2.5">
+            <!-- Rendered by JS -->
+          </div>
+          <!-- Hourly rows with schedule slots -->
+          <div id="weekGridRows" class="relative">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+        </div>
+    </div>
+
+    <!-- VIEW 2: MONTH VIEW -->
+    <div id="monthViewContainer" class="hidden glass-card rounded-2xl border border-sky-100 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col">
+      <!-- Days of Week Header -->
+      <div class="calendar-grid bg-slate-50/80 dark:bg-slate-800/90 border-b border-sky-100 dark:border-slate-700 text-center font-semibold text-xs text-slate-500 dark:text-slate-400 py-2.5">
+        <div>Mon</div>
+        <div>Tue</div>
+        <div>Wed</div>
+        <div>Thu</div>
+        <div>Fri</div>
+        <div>Sat</div>
+        <div>Sun</div>
+      </div>
+      <!-- Month Days Grid -->
+      <div id="monthGrid" class="calendar-grid bg-slate-200/50 dark:bg-slate-800 gap-px">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+
+    <section id="kanbanBoardContainer" class="hidden glass-card rounded-2xl border border-sky-100 dark:border-slate-800 shadow-sm p-3 sm:p-5" aria-labelledby="kanbanBoardHeading">
+      <div class="flex flex-wrap items-end justify-between gap-2 mb-4">
+        <div>
+          <h3 id="kanbanBoardHeading" class="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white"></h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Move cards between stages using the status menu.</p>
+        </div>
+        <span id="kanbanBoardCount" class="text-[11px] font-semibold text-slate-500 dark:text-slate-400"></span>
+      </div>
+      <div id="kanbanBoard" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3"></div>
+    </section>
+    </div>
+
+    <div id="todoBackdrop" onclick="closeTodoSidebar()" class="fixed inset-0 z-40 bg-slate-950/45" aria-hidden="true"></div>
+    <aside id="todoSidebar" class="todo-sidebar-closed fixed right-0 top-0 bottom-0 z-50 glass-card border-l border-sky-100 dark:border-slate-800 shadow-2xl p-4 overflow-y-auto" aria-hidden="true">
+      <div class="flex items-center justify-between gap-2 mb-3">
+        <div>
+          <h2 class="font-bold text-base text-slate-900 dark:text-white">To-do list</h2>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400">Keep priorities in one place</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="rounded-full bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 px-2 py-1 text-[10px] font-bold">LIST</span>
+          <button onclick="closeTodoSidebar()" aria-label="Close to-do list" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+      <div class="grid grid-cols-3 gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 mb-3">
+        <button id="todoTabDaily" onclick="setTodoPeriod('daily')" class="todo-period-tab rounded-lg px-2 py-2 text-[11px] font-bold">Daily</button>
+        <button id="todoTabWeekly" onclick="setTodoPeriod('weekly')" class="todo-period-tab rounded-lg px-2 py-2 text-[11px] font-bold">Weekly</button>
+        <button id="todoTabMonthly" onclick="setTodoPeriod('monthly')" class="todo-period-tab rounded-lg px-2 py-2 text-[11px] font-bold">Monthly</button>
+      </div>
+      <form id="todoForm" class="flex gap-2 mb-3">
+        <input id="todoInput" type="text" maxlength="180" placeholder="Add a to-do..." class="min-w-0 flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-400">
+        <button type="submit" class="px-3 py-2 rounded-xl bg-gradient-to-r from-sky-600 to-teal-600 text-white text-xs font-bold">Add</button>
+      </form>
+      <ol id="todoItems" class="list-none space-y-2 text-sm text-slate-700 dark:text-slate-200"></ol>
+      <p id="todoEmptyState" class="hidden text-center text-xs text-slate-400 py-5">Nothing here yet. Add your first to-do.</p>
+    </aside>
+    </div>
+
+  </main>
+
+  <!-- SUBJECT / GROUP NOTE & DAY DETAILS MODAL -->
+  <div id="dayModal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 hidden transition-opacity">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full max-h-[90vh] shadow-2xl border border-sky-100 dark:border-slate-700 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
+      
+      <!-- Modal Header -->
+      <div class="p-4 sm:p-5 bg-gradient-to-r from-sky-600 to-teal-600 text-white flex items-center justify-between">
+        <div>
+          <span id="modalPhaseTag" class="text-[11px] font-semibold uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-full">
+            Week 1
+          </span>
+          <h3 id="modalDateTitle" class="text-base sm:text-lg font-bold mt-1">
+            Tuesday, 10 Nov 2026
+          </h3>
+        </div>
+        <button onclick="closeModal()" class="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-4 sm:p-5 overflow-y-auto flex-1 space-y-5">
+
+        <!-- Scheduled Classes for the day -->
+        <div>
+          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5 mb-2.5">
+            <i data-lucide="book-open" class="w-3.5 h-3.5 text-sky-600 dark:text-teal-400"></i> Scheduled Classes
+          </h4>
+          <div id="modalClassesList" class="space-y-2">
+            <!-- Classes injected by JS -->
+          </div>
+        </div>
+
+        <hr class="border-slate-100 dark:border-slate-800">
+
+        <!-- Add Group Note Form -->
+        <div>
+          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5 mb-2.5">
+            <i data-lucide="file-edit" class="w-3.5 h-3.5 text-teal-600 dark:text-teal-400"></i> <span id="noteFormHeading">Add Note / Task</span>
+          </h4>
+
+          <div class="bg-sky-50/60 dark:bg-slate-800/70 p-3.5 rounded-2xl border border-sky-100 dark:border-slate-700 space-y-3">
+            <div>
+              <label for="newNoteDate" class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Date</label>
+              <input type="date" id="newNoteDate" class="w-full text-xs sm:text-sm px-3 py-2 rounded-xl border border-sky-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Select Group</label>
+              <select id="newNoteCourse" class="w-full text-xs sm:text-sm px-3 py-2 rounded-xl border border-sky-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 font-medium focus:outline-none focus:ring-2 focus:ring-sky-400">
+                <option value="CCS6314">CRYPTOGRAPHY & DATA SECURITY</option>
+                <option value="CCS6334">DIGITAL & COMPUTER FORENSICS</option>
+                <option value="COB6223">ORGANISATIONAL BEHAVIOUR</option>
+                <option value="MESF6223">INFORMATION VISUALIZATION</option>
+                <option value="General">General</option>
+                <option value="Auralis Marketing">Auralis Marketing</option>
+                <option value="Syncronym">Syncronym</option>
+              </select>
+            </div>
+
+            <div>
+              <label id="noteTitleLabel" class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Note Title / Task Details</label>
+              <input type="text" id="newNoteInput" placeholder="e.g. Prepare briefing deck, Chapter 4 questions..." class="w-full text-xs sm:text-sm px-3 py-2 rounded-xl border border-sky-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-400">
+            </div>
+
+            <!-- Category & Optional Time Row -->
+            <div class="space-y-2">
+              <div>
+                <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Category / Type</label>
+                <select id="newNoteCategory" onchange="updateEntryFormMode()" class="w-full text-xs px-2.5 py-1.5 rounded-xl border border-sky-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200">
+                  <option value="Task">Task</option>
+                  <option value="Due date">Due date</option>
+                  <option value="Meeting">Meeting</option>
+                  <option value="Follow up">Follow up</option>
+                  <option value="Assignment">Assignment</option>
+                  <option value="Lab task">Lab task</option>
+                  <option value="Quiz">Quiz</option>
+                  <option value="Test">Test</option>
+                  <option value="Exam">Exam</option>
+                  <option value="Schedule" hidden>Schedule</option>
+                  <option value="Others">Others</option>
+                </select>
+              </div>
+
+              <!-- Time with '+' Range Toggle -->
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400">Time (optional for notes/tasks; required for schedules)</label>
+                  <button type="button" id="toggleTimeRangeBtn" onclick="toggleTimeRangeInput()" class="inline-flex items-center gap-1 text-[10px] font-bold text-sky-600 dark:text-teal-400 hover:text-sky-700 dark:hover:text-teal-300">
+                    <span id="rangeBtnLabel">+ Time Range</span>
+                  </button>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <input type="time" id="newNoteTime" placeholder="Start time" class="w-full text-xs px-2.5 py-1.5 rounded-xl border border-sky-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200">
+                  <input type="time" id="newNoteEndTime" placeholder="End time" class="hidden w-full text-xs px-2.5 py-1.5 rounded-xl border border-sky-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200">
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-[1fr_auto] items-end gap-2">
+              <div>
+                <label for="newNoteReminder" class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">Extra reminder (default: 1 hour and 15 minutes before)</label>
+                <div class="flex gap-2">
+                  <input type="number" id="newNoteReminder" min="1" value="30" class="w-20 text-xs px-2.5 py-1.5 rounded-xl border border-sky-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200">
+                  <select id="newNoteReminderUnit" class="flex-1 text-xs px-2.5 py-1.5 rounded-xl border border-sky-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200">
+                    <option value="minutes">minutes before</option>
+                    <option value="hours">hours before</option>
+                    <option value="days">days before</option>
+                  </select>
+                </div>
+                <p class="mt-1 text-[9px] text-slate-400">Browser alerts require permission and the planner to remain open.</p>
+              </div>
+              <button type="button" onclick="clearCustomReminder()" class="text-[10px] font-semibold text-slate-500 hover:text-rose-600 pb-2">No extra</button>
+            </div>
+
+            <div id="childNotesEditor" class="hidden space-y-2 border-t border-sky-100 dark:border-slate-700 pt-3">
+              <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400">Notes under this item</label>
+              <div id="childNotesList" class="space-y-1.5"></div>
+              <div class="flex gap-2">
+                <input type="text" id="childNoteInput" placeholder="Add a note under this box..." class="min-w-0 flex-1 text-xs px-3 py-2 rounded-xl border border-sky-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200">
+                <button type="button" onclick="addChildNote()" class="px-3 py-2 bg-teal-600 text-white rounded-xl text-xs font-semibold">Add note</button>
+              </div>
+            </div>
+
+            <div class="flex justify-end pt-1">
+              <button id="saveNoteBtn" onclick="addSubjectNote()" class="px-4 py-2 bg-gradient-to-r from-sky-600 to-teal-600 hover:from-sky-700 hover:to-teal-700 text-white rounded-xl text-xs font-semibold shadow-xs transition active:scale-95">
+                Save Note / Task
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notes Grouped under their Subject / Group -->
+        <div>
+          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center justify-between mb-2">
+            <span class="flex items-center gap-1.5">
+              <i data-lucide="check-square" class="w-3.5 h-3.5 text-teal-600 dark:text-teal-400"></i> Notes on this Day
+            </span>
+            <span id="modalNotesCount" class="text-slate-400 font-normal">0 notes</span>
+          </h4>
+          <div id="modalNotesGroupedContainer" class="space-y-4">
+            <!-- Grouped notes injected by JS -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-5 py-3 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <button onclick="closeModal()" class="px-4 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition">
+          Close
+        </button>
+        <span class="text-[11px] text-slate-400 dark:text-slate-500">Auto-saved to browser</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- DEDICATED CLASS SESSION NOTES MODAL INTERFACE -->
+  <div id="classSessionModal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 hidden transition-opacity">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full max-h-[90vh] shadow-2xl border border-sky-100 dark:border-slate-700 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
+      <!-- Session Header -->
+      <div class="p-4 sm:p-5 bg-gradient-to-r from-sky-600 to-teal-600 text-white flex items-center justify-between">
+        <div>
+          <div class="flex items-center gap-2">
+            <span id="sessionTypeBadge" class="text-[11px] font-bold uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-full">
+              Lecture
+            </span>
+            <span id="sessionOnlineBadge" class="hidden text-[10px] font-bold bg-cyan-100 text-cyan-800 px-2 py-0.5 rounded-full">
+              Online
+            </span>
+          </div>
+          <h3 id="sessionTitleText" class="text-base sm:text-lg font-bold mt-1">
+            Class Title
+          </h3>
+          <p id="sessionMetaText" class="text-xs text-white/80 mt-0.5">
+            Time & Room
+          </p>
+        </div>
+        <button onclick="closeClassSessionModal()" class="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="p-4 sm:p-5 overflow-y-auto flex-1 space-y-4">
+        <section id="sessionStatusSummary" class="hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 p-3" aria-live="polite">
+          <div class="flex flex-wrap items-center gap-2">
+            <span id="sessionExceptionBadge"></span>
+            <p id="sessionExceptionText" class="text-xs text-slate-600 dark:text-slate-300"></p>
+          </div>
+        </section>
+        <div class="grid grid-cols-2 gap-2">
+          <button type="button" onclick="openClassStatusModal()" class="rounded-xl border border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-950/40 px-3 py-2 text-xs font-bold text-sky-700 dark:text-sky-300 hover:bg-sky-100 dark:hover:bg-sky-900/50">
+            Update Status
+          </button>
+          <button type="button" onclick="openClassStatusModal('cancelled')" class="rounded-xl border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 px-3 py-2 text-xs font-bold text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/50">
+            Mark Cancelled
+          </button>
+        </div>
+
+        <!-- Add Class Session Note Input -->
+        <div class="bg-sky-50/60 dark:bg-slate-800/70 p-3.5 rounded-2xl border border-sky-100 dark:border-slate-700 space-y-3">
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+            Add Note Directly to this Session
+          </label>
+          <input type="text" id="sessionNoteInput" placeholder="e.g. Discuss quiz revision, Chapter 2 key points..." class="w-full text-xs sm:text-sm px-3 py-2 rounded-xl border border-sky-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-400">
+          
+          <div class="flex items-center justify-between gap-2">
+            <select id="sessionNoteCategory" class="text-xs px-2.5 py-1.5 rounded-xl border border-sky-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200">
+              <option value="Task">Task</option>
+              <option value="Due date">Due date</option>
+              <option value="Meeting">Meeting</option>
+              <option value="Follow up">Follow up</option>
+              <option value="Assignment">Assignment</option>
+              <option value="Lab task">Lab task</option>
+              <option value="Quiz">Quiz</option>
+              <option value="Test">Test</option>
+              <option value="Exam">Exam</option>
+              <option value="Others">Others</option>
+            </select>
+            <button onclick="addNoteToActiveSession()" class="px-4 py-2 bg-gradient-to-r from-sky-600 to-teal-600 hover:from-sky-700 hover:to-teal-700 text-white rounded-xl text-xs font-semibold shadow-xs transition active:scale-95">
+              Add to Class Box
+            </button>
+          </div>
+        </div>
+
+        <!-- Notes Attached to this class -->
+        <div>
+          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">
+            Notes inside this class box
+          </h4>
+          <div id="sessionNotesList" class="space-y-2">
+            <!-- Injected by JS -->
+          </div>
+        </div>
+      </div>
+
+      <div class="px-5 py-3 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+        <button onclick="closeClassSessionModal()" class="px-4 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition">
+          Done
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="classStatusModal" class="hidden fixed inset-0 z-[60] bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="classStatusTitle">
+    <div class="w-full max-w-xl max-h-[92vh] overflow-hidden rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl flex flex-col">
+      <header class="border-b border-slate-100 dark:border-slate-800 p-4 sm:p-5">
+        <h2 id="classStatusTitle" class="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white">Update Class Status</h2>
+        <p class="mt-1 text-xs sm:text-sm text-slate-600 dark:text-slate-300">Is this session proceeding as scheduled, or has an exception occurred?</p>
+      </header>
+      <div class="space-y-3 overflow-y-auto p-4 sm:p-5">
+        <fieldset class="space-y-2">
+          <legend class="sr-only">Choose a class status</legend>
+          <label class="flex cursor-pointer items-start gap-2 rounded-xl border border-slate-200 dark:border-slate-700 p-3">
+            <input type="radio" name="classStatusType" value="rescheduled" onchange="renderClassStatusFields()" class="mt-0.5 accent-sky-600">
+            <span class="min-w-0">
+              <span class="block text-xs font-bold text-slate-800 dark:text-slate-100">Rescheduled / Replaced</span>
+              <span class="block text-[11px] text-slate-500 dark:text-slate-400">Set an alternate date, time slot, and meeting link.</span>
+            </span>
+          </label>
+          <label class="flex cursor-pointer items-start gap-2 rounded-xl border border-slate-200 dark:border-slate-700 p-3">
+            <input type="radio" name="classStatusType" value="blended" onchange="renderClassStatusFields()" class="mt-0.5 accent-violet-600">
+            <span class="min-w-0">
+              <span class="block text-xs font-bold text-slate-800 dark:text-slate-100">Blended Learning (Asynchronous)</span>
+              <span class="block text-[11px] text-slate-500 dark:text-slate-400">No live session; self-paced tasks or materials assigned.</span>
+            </span>
+          </label>
+          <label class="flex cursor-pointer items-start gap-2 rounded-xl border border-slate-200 dark:border-slate-700 p-3">
+            <input type="radio" name="classStatusType" value="tba" onchange="renderClassStatusFields()" class="mt-0.5 accent-amber-600">
+            <span class="min-w-0">
+              <span class="block text-xs font-bold text-slate-800 dark:text-slate-100">To Be Announced (TBA)</span>
+              <span class="block text-[11px] text-slate-500 dark:text-slate-400">Replacement details will be confirmed later by the lecturer.</span>
+            </span>
+          </label>
+          <label class="flex cursor-pointer items-start gap-2 rounded-xl border border-slate-200 dark:border-slate-700 p-3">
+            <input type="radio" name="classStatusType" value="cancelled" onchange="renderClassStatusFields()" class="mt-0.5 accent-rose-600">
+            <span class="min-w-0">
+              <span class="block text-xs font-bold text-slate-800 dark:text-slate-100">Fully Cancelled</span>
+              <span class="block text-[11px] text-slate-500 dark:text-slate-400">Class is dismissed entirely with no replacement needed.</span>
+            </span>
+          </label>
+          <label class="flex cursor-pointer items-start gap-2 rounded-xl border border-slate-200 dark:border-slate-700 p-3">
+            <input type="radio" name="classStatusType" value="online" onchange="renderClassStatusFields()" class="mt-0.5 accent-cyan-600">
+            <span class="min-w-0">
+              <span class="block text-xs font-bold text-slate-800 dark:text-slate-100">Online</span>
+              <span class="block text-[11px] text-slate-500 dark:text-slate-400">Keep the scheduled date and time; hold this class online.</span>
+            </span>
+          </label>
+        </fieldset>
+
+        <section id="rescheduledFields" class="hidden space-y-2 rounded-xl border border-sky-200 dark:border-sky-900 bg-sky-50/70 dark:bg-sky-950/30 p-3">
+          <h3 class="text-xs font-bold text-sky-800 dark:text-sky-200">Replacement session details</h3>
+          <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-300">Replacement Date
+            <input id="classReplacementDate" type="date" class="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-2 text-xs">
+          </label>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="text-[10px] font-semibold text-slate-600 dark:text-slate-300">Start Time
+              <input id="classReplacementStart" type="time" class="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-2 text-xs">
+            </label>
+            <label class="text-[10px] font-semibold text-slate-600 dark:text-slate-300">End Time
+              <input id="classReplacementEnd" type="time" class="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-2 text-xs">
+            </label>
+          </div>
+          <label class="block text-[10px] font-semibold text-slate-600 dark:text-slate-300">Meeting / Room Link
+            <input id="classReplacementLocation" type="text" maxlength="300" placeholder="Google Meet, Teams, or room change" class="mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-2 text-xs">
+          </label>
+        </section>
+
+        <section id="blendedFields" class="hidden rounded-xl border border-violet-200 dark:border-violet-900 bg-violet-50/70 dark:bg-violet-950/30 p-3">
+          <label for="classBlendedNotes" class="block text-xs font-bold text-violet-800 dark:text-violet-200">Lecture Notes / Task Directions</label>
+          <textarea id="classBlendedNotes" rows="4" maxlength="3000" placeholder="Add slide links, portal tasks, or submission instructions..." class="mt-2 w-full resize-y rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-2 text-xs"></textarea>
+        </section>
+
+        <section id="tbaFields" class="hidden rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50/70 dark:bg-amber-950/30 p-3">
+          <label class="flex items-start gap-2 text-xs text-slate-700 dark:text-slate-200">
+            <input id="classFollowUpNextWeek" type="checkbox" class="mt-0.5 accent-amber-600">
+            <span><span class="font-semibold">Remind me to follow up next week</span><span class="mt-0.5 block text-[10px] text-slate-500 dark:text-slate-400">Reminder appears while this planner is open and notifications are allowed.</span></span>
+          </label>
+        </section>
+
+        <section id="cancelledFields" class="hidden rounded-xl border border-rose-200 dark:border-rose-900 bg-rose-50/70 dark:bg-rose-950/30 p-3">
+          <label for="classCancellationReason" class="block text-xs font-bold text-rose-800 dark:text-rose-200">Reason (optional)</label>
+          <textarea id="classCancellationReason" rows="2" maxlength="500" placeholder="Public holiday, emergency, or other reason" class="mt-2 w-full resize-y rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2.5 py-2 text-xs"></textarea>
+        </section>
+      </div>
+      <footer class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 dark:border-slate-800 p-3 sm:p-4">
+        <button id="clearClassStatusButton" type="button" onclick="clearClassSessionStatus()" class="hidden rounded-xl px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">Restore scheduled class</button>
+        <div class="ml-auto flex gap-2">
+          <button type="button" onclick="closeClassStatusModal()" class="rounded-xl border border-slate-200 dark:border-slate-700 px-3.5 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300">Cancel</button>
+          <button type="button" onclick="saveClassSessionStatus()" class="rounded-xl bg-sky-600 px-4 py-2 text-xs font-bold text-white hover:bg-sky-700">Save Status</button>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <!-- APPLICATION LOGIC -->
+  <script>
+    /* ==========================================================================
+       1. ACADEMIC PERIODS & SUBJECT NAMES (CODES REMOVED FROM DISPLAY)
+       ========================================================================== */
+    const ACADEMIC_PERIODS = [
+      {
+        id: 'win',
+        name: 'Week of Immersion (WIN)',
+        start: '2026-11-01',
+        end: '2026-11-08',
+        isTeaching: false
+      },
+      {
+        id: 'teaching',
+        name: 'Teaching & Learning Activities',
+        start: '2026-11-09',
+        end: '2027-02-14',
+        isTeaching: true,
+        totalWeeks: 14
+      },
+      {
+        id: 'studyleave',
+        name: 'Study Leave',
+        start: '2027-02-15',
+        end: '2027-02-17',
+        isTeaching: false
+      },
+      {
+        id: 'finals',
+        name: 'Final Examination',
+        start: '2027-02-18',
+        end: '2027-03-07',
+        isTeaching: false
+      },
+      {
+        id: 'break',
+        name: 'Trimester Break',
+        start: '2027-03-08',
+        end: '2027-03-28',
+        isTeaching: false
+      }
+    ];
+
+    // Subject & Group Display Names (No codes shown)
+    const GROUP_NAMES = {
+      'CCS6314': 'CRYPTOGRAPHY & DATA SECURITY',
+      'CCS6334': 'DIGITAL & COMPUTER FORENSICS',
+      'COB6223': 'ORGANISATIONAL BEHAVIOUR',
+      'MESF6223': 'INFORMATION VISUALIZATION',
+      'General': 'General',
+      'Auralis Marketing': 'Auralis Marketing',
+      'Syncronym': 'Syncronym'
+    };
+
+    // Style Palettes (Light & Dark friendly)
+    const SUBJECT_COLORS = {
+      'CCS6314': {
+        bg: 'bg-sky-50 dark:bg-sky-950/40',
+        text: 'text-sky-800 dark:text-sky-300',
+        border: 'border-sky-300 dark:border-sky-800',
+        dot: 'bg-sky-500',
+        badge: 'bg-sky-100 dark:bg-sky-900 text-sky-800 dark:text-sky-200'
+      },
+      'CCS6334': {
+        bg: 'bg-teal-50 dark:bg-teal-950/40',
+        text: 'text-teal-800 dark:text-teal-300',
+        border: 'border-teal-300 dark:border-teal-800',
+        dot: 'bg-teal-500',
+        badge: 'bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-200'
+      },
+      'COB6223': {
+        bg: 'bg-emerald-50 dark:bg-emerald-950/40',
+        text: 'text-emerald-800 dark:text-emerald-300',
+        border: 'border-emerald-300 dark:border-emerald-800',
+        dot: 'bg-emerald-500',
+        badge: 'bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200'
+      },
+      'MESF6223': {
+        bg: 'bg-amber-50 dark:bg-amber-950/40',
+        text: 'text-amber-900 dark:text-amber-300',
+        border: 'border-amber-300 dark:border-amber-800',
+        dot: 'bg-amber-500',
+        badge: 'bg-amber-100 dark:bg-amber-900 text-amber-900 dark:text-amber-200'
+      },
+      'Auralis Marketing': {
+        bg: 'bg-rose-50 dark:bg-rose-950/40',
+        text: 'text-rose-900 dark:text-rose-300',
+        border: 'border-rose-300 dark:border-rose-800',
+        dot: 'bg-rose-500',
+        badge: 'bg-rose-100 dark:bg-rose-900 text-rose-900 dark:text-rose-200'
+      },
+      'Syncronym': {
+        bg: 'bg-indigo-50 dark:bg-indigo-950/40',
+        text: 'text-indigo-900 dark:text-indigo-300',
+        border: 'border-indigo-300 dark:border-indigo-800',
+        dot: 'bg-indigo-500',
+        badge: 'bg-indigo-100 dark:bg-indigo-900 text-indigo-900 dark:text-indigo-200'
+      },
+      'General': {
+        bg: 'bg-slate-50 dark:bg-slate-800/60',
+        text: 'text-slate-700 dark:text-slate-300',
+        border: 'border-slate-300 dark:border-slate-700',
+        dot: 'bg-slate-400',
+        badge: 'bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200'
+      }
+    };
+
+    // Recurring Weekly Classes (Nov 9, 2026 to Feb 14, 2027)
+    // dayOfWeek: 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat, 0=Sun
+    const WEEKLY_CLASSES = [
+      // Tuesday
+      {
+        courseCode: 'COB6223',
+        fullName: 'ORGANISATIONAL BEHAVIOUR',
+        type: 'Lecture',
+        dayOfWeek: 2,
+        startTime: '08:00',
+        endTime: '10:00',
+        startHour: 8,
+        durationHours: 2,
+        room: 'CQCR2002-FCI Classroom'
+      },
+      {
+        courseCode: 'CCS6314',
+        fullName: 'CRYPTOGRAPHY & DATA SECURITY',
+        type: 'Tutorial',
+        dayOfWeek: 2,
+        startTime: '12:00',
+        endTime: '14:00',
+        startHour: 12,
+        durationHours: 2,
+        room: 'CQAR2007-FCI CISCO IP C.I. C2'
+      },
+      {
+        courseCode: 'CCS6334',
+        fullName: 'DIGITAL & COMPUTER FORENSICS',
+        type: 'Tutorial',
+        dayOfWeek: 2,
+        startTime: '16:00',
+        endTime: '18:00',
+        startHour: 16,
+        durationHours: 2,
+        room: 'CQAR2004-FCI Msoft .NET Lab'
+      },
+      // Wednesday
+      {
+        courseCode: 'MESF6223',
+        fullName: 'INFORMATION VISUALIZATION',
+        type: 'Lecture',
+        dayOfWeek: 3,
+        startTime: '08:00',
+        endTime: '11:00',
+        startHour: 8,
+        durationHours: 3,
+        room: 'CJCR2010-FCM Anim&Vis Eff Std'
+      },
+      {
+        courseCode: 'CCS6314',
+        fullName: 'CRYPTOGRAPHY & DATA SECURITY',
+        type: 'Lecture',
+        dayOfWeek: 3,
+        startTime: '12:00',
+        endTime: '14:00',
+        startHour: 12,
+        durationHours: 2,
+        room: 'CQAR1006-FCI Tutorial ROOM'
+      },
+      {
+        courseCode: 'CCS6334',
+        fullName: 'DIGITAL & COMPUTER FORENSICS',
+        type: 'Lecture',
+        dayOfWeek: 3,
+        startTime: '16:00',
+        endTime: '18:00',
+        startHour: 16,
+        durationHours: 2,
+        room: 'CQAR1006-FCI Tutorial ROOM'
+      },
+      // Thursday
+      {
+        courseCode: 'COB6223',
+        fullName: 'ORGANISATIONAL BEHAVIOUR',
+        type: 'Tutorial',
+        dayOfWeek: 4,
+        startTime: '10:00',
+        endTime: '12:00',
+        startHour: 10,
+        durationHours: 2,
+        room: 'CQCR2001-FCI Classroom'
+      }
+    ];
+
+    /* ==========================================================================
+       2. APP STATE & PERSISTENCE
+       ========================================================================== */
+    let currentView = 'week'; // Opens in Timetable view first
+    let currentViewDate = new Date(2026, 10, 9); // Nov 9, 2026
+    let selectedFilterCourse = 'ALL';
+    let isKanbanView = false;
+    let timetableVisibleDays = [0, 1, 2, 3, 4, 5, 6];
+    let timetableStartHour = 8;
+    let timetableEndHour = 24;
+    let activeModalDateStr = null;
+    let activeSessionKey = null; // Key for session notes: `${isoDate}_${courseCode}_${startTime}`
+    let activeSessionData = null;
+    let isTimeRangeMode = false;
+    let editingNoteIndex = null;
+    let selectedTodoPeriod = 'daily';
+    let todoItems = { daily: [], weekly: [], monthly: [] };
+    let deferredInstallPrompt = null;
+    let classSessionStatuses = {};
+    const CLASS_STATUS_TYPES = ['rescheduled', 'blended', 'tba', 'cancelled', 'online'];
+    const KANBAN_COLUMNS = [
+      { key: 'backlog', label: 'Backlog', style: 'border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800' },
+      { key: 'in_progress', label: 'In Progress', style: 'border-sky-200 dark:border-sky-900 bg-sky-50 dark:bg-sky-950/40' },
+      { key: 'review', label: 'Review', style: 'border-violet-200 dark:border-violet-900 bg-violet-50 dark:bg-violet-950/40' },
+      { key: 'done', label: 'Done', style: 'border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/40' }
+    ];
+
+    // Dark mode state
+    let isDarkMode = localStorage.getItem('app_dark_mode') === 'true';
+
+    // Notes storage: { "2026-11-10": [ { id, courseCode, text, category, time, endTime, sessionKey, completed } ] }
+    let subjectNotes = {};
+    try {
+      const stored = localStorage.getItem('academic_subject_notes_v3');
+      if (stored) {
+        subjectNotes = JSON.parse(stored);
+      }
+    } catch (e) {
+      console.warn("Storage warning", e);
+    }
+    try {
+      const storedStatuses = JSON.parse(localStorage.getItem('planner_class_statuses_v1') || '{}');
+      if (storedStatuses && typeof storedStatuses === 'object' && !Array.isArray(storedStatuses)) {
+        classSessionStatuses = storedStatuses;
+      }
+    } catch (error) {
+      console.warn('Class status storage warning', error);
+    }
+    let firedReminders = new Set();
+    try {
+      firedReminders = new Set(JSON.parse(localStorage.getItem('academic_fired_reminders_v1') || '[]'));
+    } catch (e) {
+      console.warn("Reminder storage warning", e);
+    }
+    try {
+      const savedTodos = JSON.parse(localStorage.getItem('planner_todo_items_v1') || '{}');
+      todoItems = {
+        daily: Array.isArray(savedTodos.daily) ? savedTodos.daily : [],
+        weekly: Array.isArray(savedTodos.weekly) ? savedTodos.weekly : [],
+        monthly: Array.isArray(savedTodos.monthly) ? savedTodos.monthly : []
+      };
+    } catch (e) {
+      console.warn('To-do storage warning', e);
+    }
+
+    Object.values(subjectNotes).forEach(notes => notes.forEach(note => {
+      if (!note.id) note.id = `item-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      if (!Array.isArray(note.reminders)) note.reminders = [60, 15];
+      if (!Array.isArray(note.children)) note.children = [];
+    }));
+
+    function saveSubjectNotes() {
+      try {
+        localStorage.setItem('academic_subject_notes_v3', JSON.stringify(subjectNotes));
+      } catch (e) {
+        console.error("Save error", e);
+      }
+    }
+
+    function saveClassSessionStatuses() {
+      try {
+        localStorage.setItem('planner_class_statuses_v1', JSON.stringify(classSessionStatuses));
+        return true;
+      } catch (error) {
+        console.error('Class status save error', error);
+        showAppNotice('Could not save this class status in the browser.');
+        return false;
+      }
+    }
+
+    function getClassSessionKey(isoDate, classObj) {
+      return `${isoDate}_${classObj.courseCode}_${classObj.startTime}`;
+    }
+
+    function getClassSessionStatus(isoDate, classObj) {
+      const status = classSessionStatuses[getClassSessionKey(isoDate, classObj)];
+      return status && CLASS_STATUS_TYPES.includes(status.type) ? status : null;
+    }
+
+    function getClassStatusLabel(status) {
+      if (!status) return '';
+      return {
+        rescheduled: 'Rescheduled',
+        blended: 'Blended Learning',
+        tba: 'Pending Replacement (TBA)',
+        cancelled: 'Cancelled',
+        online: 'Online'
+      }[status.type] || '';
+    }
+
+    function classStatusBadgeMarkup(status) {
+      if (!status) return '';
+      const styles = {
+        rescheduled: 'bg-sky-100 text-sky-800 dark:bg-sky-900/80 dark:text-sky-200',
+        blended: 'bg-violet-100 text-violet-800 dark:bg-violet-900/80 dark:text-violet-200',
+        tba: 'border border-dashed border-amber-400 bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-200',
+        cancelled: 'bg-rose-100 text-rose-800 dark:bg-rose-950/70 dark:text-rose-200',
+        online: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/80 dark:text-cyan-200'
+      };
+      const icon = status.type === 'rescheduled' ? '<i data-lucide="link-2" class="h-3 w-3"></i>' : '';
+      return `<span class="class-status-badge inline-flex max-w-full items-center gap-1 self-start rounded-md px-1.5 py-0.5 text-[8px] font-extrabold leading-tight ${styles[status.type]}">${icon}${escapeHTML(getClassStatusLabel(status))}</span>`;
+    }
+
+    function classLocationMarkup(value) {
+      const location = String(value || '').trim();
+      if (!location) return '';
+      let url;
+      try {
+        url = new URL(location);
+      } catch {
+        return `<span class="inline-flex items-center gap-1"><i data-lucide="map-pin" class="h-3 w-3"></i>${escapeHTML(location)}</span>`;
+      }
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+        return `<span class="inline-flex items-center gap-1"><i data-lucide="map-pin" class="h-3 w-3"></i>${escapeHTML(location)}</span>`;
+      }
+      return `<a href="${escapeHTML(url.href)}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" class="inline-flex items-center gap-1 text-sky-700 underline dark:text-sky-300"><i data-lucide="external-link" class="h-3 w-3"></i>${escapeHTML(location)}</a>`;
+    }
+
+    function escapeHTML(value) {
+      return String(value ?? '').replace(/[&<>"']/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[character]);
+    }
+
+    function showAppNotice(message) {
+      let notice = document.getElementById('appNotice');
+      if (!notice) {
+        notice = document.createElement('div');
+        notice.id = 'appNotice';
+        notice.setAttribute('role', 'status');
+        notice.className = 'fixed z-[60] bottom-4 left-1/2 -translate-x-1/2 max-w-[calc(100vw-2rem)] px-4 py-3 rounded-xl bg-slate-900 text-white text-xs sm:text-sm shadow-xl';
+        document.body.appendChild(notice);
+      }
+      notice.textContent = message;
+      notice.classList.remove('hidden');
+      clearTimeout(notice.hideTimer);
+      notice.hideTimer = setTimeout(() => notice.classList.add('hidden'), 6000);
+    }
+
+    function sendNotification(title, body) {
+      showAppNotice(`${title}: ${body}`);
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(title, { body });
+      }
+    }
+
+    function requestNotificationPermission() {
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission().catch(error => {
+          console.warn('Notification permission request failed', error);
+        });
+      }
+    }
+
+    function toggleTimeRangeInput() {
+      isTimeRangeMode = !isTimeRangeMode;
+      const endInput = document.getElementById('newNoteEndTime');
+      const label = document.getElementById('rangeBtnLabel');
+      if (isTimeRangeMode) {
+        endInput.classList.remove('hidden');
+        label.innerText = 'Single Time';
+      } else {
+        endInput.classList.add('hidden');
+        endInput.value = '';
+        label.innerText = '+ Time Range';
+      }
+    }
+
+    function applyTheme() {
+      if (isDarkMode) {
+        document.documentElement.classList.add('dark');
+        const icon = document.getElementById('themeIcon');
+        if (icon) icon.setAttribute('data-lucide', 'sun');
+      } else {
+        document.documentElement.classList.remove('dark');
+        const icon = document.getElementById('themeIcon');
+        if (icon) icon.setAttribute('data-lucide', 'moon');
+      }
+      localStorage.setItem('app_dark_mode', isDarkMode);
+      lucide.createIcons();
+    }
+
+    function toggleDarkMode() {
+      isDarkMode = !isDarkMode;
+      applyTheme();
+    }
+
+    /* ==========================================================================
+       3. HELPER FUNCTIONS
+       ========================================================================== */
+    function formatZero(n) {
+      return n < 10 ? '0' + n : '' + n;
+    }
+
+    function getISODate(d) {
+      const year = d.getFullYear();
+      const month = formatZero(d.getMonth() + 1);
+      const day = formatZero(d.getDate());
+      return `${year}-${month}-${day}`;
+    }
+
+    function parseISODate(isoStr) {
+      const parts = isoStr.split('-');
+      return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    }
+
+    function getStartOfWeek(date) {
+      const d = new Date(date);
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday is start
+      return new Date(d.setDate(diff));
+    }
+
+    function getAcademicStatus(dateObj) {
+      const iso = getISODate(dateObj);
+      for (const p of ACADEMIC_PERIODS) {
+        if (iso >= p.start && iso <= p.end) {
+          if (p.isTeaching) {
+            const teachingStart = new Date(2026, 10, 9);
+            const diffTime = dateObj.getTime() - teachingStart.getTime();
+            const diffDays = Math.floor(diffTime / (1000 * 3600 * 24));
+            const weekNumber = Math.min(Math.max(Math.floor(diffDays / 7) + 1, 1), 14);
+            return {
+              badgeText: `Week ${weekNumber} of 14`,
+              detailText: `Teaching & Learning Activities (Week ${weekNumber})`,
+              isTeaching: true,
+              weekNumber: weekNumber
+            };
+          } else {
+            return {
+              badgeText: p.name,
+              detailText: p.name,
+              isTeaching: false,
+              weekNumber: null
+            };
+          }
+        }
+      }
+      return {
+        badgeText: 'Academic Calendar',
+        detailText: 'Schedule & Tasks',
+        isTeaching: false,
+        weekNumber: null
+      };
+    }
+
+    function updateHeaderStatus() {
+      const status = getAcademicStatus(currentViewDate);
+      const badge = document.getElementById('headerWeekBadge');
+      const sub = document.getElementById('headerSubText');
+      const heading = document.getElementById('viewHeading');
+
+      if (badge) badge.innerText = status.badgeText;
+      if (sub) sub.innerText = status.detailText;
+
+      if (heading) {
+        if (isKanbanView) {
+          heading.innerText = `${GROUP_NAMES[selectedFilterCourse] || selectedFilterCourse} Board`;
+        } else if (currentView === 'week') {
+          const weekStart = getStartOfWeek(currentViewDate);
+          const weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekStart.getDate() + 6);
+          heading.innerText = `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+        } else {
+          heading.innerText = currentViewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        }
+      }
+    }
+
+    function getItemsForDate(dateObj) {
+      const iso = getISODate(dateObj);
+      const status = getAcademicStatus(dateObj);
+      const items = [];
+
+      if (status.isTeaching) {
+        const dayClasses = WEEKLY_CLASSES.filter(c => c.dayOfWeek === dateObj.getDay());
+        dayClasses.forEach(c => {
+          if (selectedFilterCourse === 'ALL' || c.courseCode === selectedFilterCourse) {
+            items.push({
+              title: c.fullName,
+              type: c.type,
+              time: `${c.startTime} - ${c.endTime}`,
+              courseCode: c.courseCode,
+              room: c.room,
+              classData: c,
+              classStatus: getClassSessionStatus(iso, c),
+              sessionDate: iso,
+              isSubjectNote: false
+            });
+          }
+        });
+      }
+      Object.values(classSessionStatuses).forEach(classStatus => {
+        if (!classStatus || classStatus.type !== 'rescheduled' || classStatus.replacementDate !== iso) return;
+        if (!classStatus.classData || (selectedFilterCourse !== 'ALL' && classStatus.classData.courseCode !== selectedFilterCourse)) return;
+        items.push({
+          title: classStatus.classData.fullName,
+          type: classStatus.classData.type,
+          time: `${classStatus.replacementStartTime} - ${classStatus.replacementEndTime}`,
+          courseCode: classStatus.classData.courseCode,
+          room: classStatus.meetingRoomLink || classStatus.classData.room,
+          classData: classStatus.classData,
+          classStatus,
+          sessionDate: classStatus.sourceDate,
+          isReplacement: true,
+          isSubjectNote: false
+        });
+      });
+
+      const notes = subjectNotes[iso] || [];
+      notes.forEach(note => {
+        if (selectedFilterCourse === 'ALL' || note.courseCode === selectedFilterCourse) {
+          items.push({
+            title: note.text,
+            category: note.category,
+            time: formatTimeDisplay(note.time, note.endTime),
+            courseCode: note.courseCode,
+            children: Array.isArray(note.children) ? note.children : [],
+            isSubjectNote: true,
+            completed: note.completed,
+            originalIndex: notes.indexOf(note)
+          });
+        }
+      });
+
+      items.sort((first, second) => Number(Boolean(second.classStatus)) - Number(Boolean(first.classStatus)));
+      return items;
+    }
+
+    function timeStringToHours(timeStr) {
+      if (!timeStr) return null;
+      const [h, m] = timeStr.split(':').map(Number);
+      return h + (m || 0) / 60;
+    }
+
+    function formatTimeDisplay(start, end) {
+      if (!start && !end) return '';
+      if (start && end) return `${start} - ${end}`;
+      return start || end;
+    }
+
+    function calendarNoteBulletListMarkup(notes, maxItems, className) {
+      if (!notes.length) return '';
+      const visibleNotes = notes.slice(0, maxItems);
+      const bullets = visibleNotes
+        .map(note => `<li class="break-words whitespace-normal">${escapeHTML(note.text)}</li>`)
+        .join('');
+      const remaining = notes.length - visibleNotes.length;
+      return `
+        <ul aria-label="Attached notes" class="${className} list-disc pl-3">
+          ${bullets}
+          ${remaining ? `<li class="list-none opacity-70">+${remaining} more</li>` : ''}
+        </ul>
+      `;
+    }
+
+    function getUpcomingDeadlines(now = Date.now()) {
+      const deadlinePattern = /\b(quiz|test|assignment|exam)\b/i;
+      const upcoming = [];
+
+      Object.entries(subjectNotes).forEach(([isoDate, notes]) => {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate) || !Array.isArray(notes)) return;
+        notes.forEach((note, index) => {
+          if (note.completed || !deadlinePattern.test(`${note.category || ''} ${note.text || ''}`)) return;
+
+          const dueDate = parseISODate(isoDate);
+          if (note.time && /^\d{2}:\d{2}$/.test(note.time)) {
+            const [hour, minute] = note.time.split(':').map(Number);
+            dueDate.setHours(hour, minute, 0, 0);
+          } else {
+            dueDate.setHours(23, 59, 59, 999);
+          }
+
+          const remainingMs = dueDate.getTime() - now;
+          if (remainingMs > 0) {
+            upcoming.push({ note, index, isoDate, dueDate, remainingMs });
+          }
+        });
+      });
+
+      return upcoming.sort((first, second) =>
+        first.dueDate.getTime() - second.dueDate.getTime()
+        || String(first.note.text).localeCompare(String(second.note.text))
+      );
+    }
+
+    function formatCountdown(remainingMs) {
+      const totalSeconds = Math.max(0, Math.floor(remainingMs / 1000));
+      const days = Math.floor(totalSeconds / 86400);
+      const hours = Math.floor((totalSeconds % 86400) / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      const time = `${formatZero(hours)}:${formatZero(minutes)}:${formatZero(seconds)}`;
+      return days ? `${days}d ${time}` : time;
+    }
+
+    function renderCountdowns() {
+      const toggle = document.getElementById('countdownToggle');
+      const label = document.getElementById('countdownLabel');
+      const timer = document.getElementById('countdownTimer');
+      const count = document.getElementById('countdownCount');
+      const list = document.getElementById('countdownItems');
+      if (!toggle || !label || !timer || !count || !list) return;
+
+      const deadlines = getUpcomingDeadlines();
+      const next = deadlines[0];
+      toggle.disabled = deadlines.length === 0;
+      label.textContent = next ? (next.note.category || 'Deadline') : 'Deadlines';
+      timer.textContent = next ? formatCountdown(next.remainingMs) : 'No upcoming';
+      toggle.title = next
+        ? `${next.note.text} · ${next.dueDate.toLocaleString()}`
+        : 'No upcoming quiz, test, assignment, or exam deadlines';
+      count.textContent = deadlines.length > 99 ? '99+' : String(deadlines.length);
+      count.classList.toggle('hidden', deadlines.length < 2);
+      document.getElementById('countdownDropdownCount').textContent =
+        `${deadlines.length} upcoming`;
+
+      list.innerHTML = '';
+      if (deadlines.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'rounded-xl bg-slate-50 dark:bg-slate-800 px-3 py-4 text-center text-xs text-slate-500 dark:text-slate-400';
+        empty.textContent = 'No upcoming quiz, test, assignment, or exam.';
+        list.appendChild(empty);
+        closeCountdownDropdown();
+        return;
+      }
+
+      deadlines.forEach(deadline => {
+        const itemButton = document.createElement('button');
+        itemButton.type = 'button';
+        itemButton.className = 'w-full rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 p-3 text-left hover:border-amber-300 dark:hover:border-amber-700 transition';
+
+        const title = document.createElement('span');
+        title.className = 'block break-words text-xs font-bold text-slate-800 dark:text-slate-100';
+        title.textContent = deadline.note.text;
+
+        const details = document.createElement('span');
+        details.className = 'mt-1 flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-500 dark:text-slate-400';
+        const dueDescription = document.createElement('span');
+        const dateLabel = deadline.dueDate.toLocaleDateString('en-US', {
+          month: 'short', day: 'numeric', year: 'numeric'
+        });
+        const timeLabel = deadline.note.time
+          ? deadline.note.time
+          : '11:59 PM (all day)';
+        dueDescription.textContent = `${deadline.note.category || 'Deadline'} · ${dateLabel} · ${timeLabel}`;
+
+        const countdown = document.createElement('span');
+        countdown.className = 'shrink-0 font-bold tabular-nums text-amber-700 dark:text-amber-300';
+        countdown.textContent = formatCountdown(deadline.remainingMs);
+
+        details.append(dueDescription, countdown);
+        itemButton.append(title, details);
+        itemButton.onclick = () => {
+          closeCountdownDropdown();
+          openModalForDate(deadline.isoDate, deadline.note.courseCode);
+          editNote(deadline.index);
+        };
+        list.appendChild(itemButton);
+      });
+    }
+
+    function toggleCountdownDropdown() {
+      const isOpen = document.getElementById('countdownDropdown').classList.contains('hidden');
+      if (isOpen) openCountdownDropdown();
+      else closeCountdownDropdown();
+    }
+
+    function openCountdownDropdown() {
+      const dropdown = document.getElementById('countdownDropdown');
+      const toggle = document.getElementById('countdownToggle');
+      if (!dropdown || toggle.disabled) return;
+      if (window.matchMedia('(max-width: 640px)').matches) {
+        dropdown.style.position = 'fixed';
+        dropdown.style.top = `${toggle.getBoundingClientRect().bottom + 8}px`;
+        dropdown.style.left = '12px';
+        dropdown.style.right = '12px';
+      } else {
+        dropdown.style.position = '';
+        dropdown.style.top = '';
+        dropdown.style.left = '';
+        dropdown.style.right = '';
+      }
+      dropdown.classList.remove('hidden');
+      toggle.setAttribute('aria-expanded', 'true');
+    }
+
+    function closeCountdownDropdown() {
+      const dropdown = document.getElementById('countdownDropdown');
+      if (!dropdown) return;
+      dropdown.classList.add('hidden');
+      document.getElementById('countdownToggle').setAttribute('aria-expanded', 'false');
+    }
+
+    function formatTimetableHour(hour) {
+      if (hour === 24) return '12:00 AM';
+      const displayHour = hour % 12 || 12;
+      return `${displayHour}:00 ${hour >= 12 ? 'PM' : 'AM'}`;
+    }
+
+    function updateTimetableFilterSummary() {
+      const summary = document.getElementById('timetableFilterSummary');
+      if (!summary) return;
+      const daysLabel = timetableVisibleDays.length === 7
+        ? 'All days'
+        : `${timetableVisibleDays.length} day${timetableVisibleDays.length === 1 ? '' : 's'}`;
+      summary.textContent = `${daysLabel} · ${formatTimetableHour(timetableStartHour).replace(':00', '')}–${formatTimetableHour(timetableEndHour).replace(':00', '')}`;
+    }
+
+    function initializeTimetableFilters() {
+      const dayContainer = document.getElementById('timetableDayFilters');
+      const startSelect = document.getElementById('timetableStartHour');
+      const endSelect = document.getElementById('timetableEndHour');
+      const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      dayContainer.innerHTML = '';
+      dayNames.forEach((day, index) => {
+        const label = document.createElement('label');
+        label.className = 'flex items-center gap-2 rounded-lg bg-slate-50 dark:bg-slate-800 px-2.5 py-2 text-xs text-slate-700 dark:text-slate-200';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `timetableDayFilter${index}`;
+        checkbox.checked = timetableVisibleDays.includes(index);
+        checkbox.className = 'rounded accent-sky-600';
+        checkbox.onchange = () => setTimetableDayFilter(index);
+        const text = document.createElement('span');
+        text.textContent = day;
+        label.append(checkbox, text);
+        dayContainer.appendChild(label);
+      });
+
+      [startSelect, endSelect].forEach(select => {
+        select.innerHTML = '';
+        for (let hour = 8; hour <= 24; hour++) {
+          const option = document.createElement('option');
+          option.value = String(hour);
+          option.textContent = formatTimetableHour(hour);
+          select.appendChild(option);
+        }
+      });
+      startSelect.value = String(timetableStartHour);
+      endSelect.value = String(timetableEndHour);
+      updateTimetableFilterSummary();
+    }
+
+    function setTimetableDayFilter(changedDay) {
+      const selectedDays = Array.from({ length: 7 }, (_, index) => index)
+        .filter(index => document.getElementById(`timetableDayFilter${index}`).checked);
+      if (selectedDays.length === 0) {
+        document.getElementById(`timetableDayFilter${changedDay}`).checked = true;
+        showAppNotice('Keep at least one day visible in the timetable.');
+        return;
+      }
+      timetableVisibleDays = selectedDays;
+      updateTimetableFilterSummary();
+      renderCurrentView();
+    }
+
+    function setTimetableDays(days) {
+      const validDays = days.filter(day => Number.isInteger(day) && day >= 0 && day <= 6);
+      if (!validDays.length) return;
+      timetableVisibleDays = [...new Set(validDays)].sort((first, second) => first - second);
+      for (let day = 0; day < 7; day++) {
+        document.getElementById(`timetableDayFilter${day}`).checked = timetableVisibleDays.includes(day);
+      }
+      updateTimetableFilterSummary();
+      renderCurrentView();
+    }
+
+    function setTimetableTimeRange() {
+      const startSelect = document.getElementById('timetableStartHour');
+      const endSelect = document.getElementById('timetableEndHour');
+      let start = Number(startSelect.value);
+      let end = Number(endSelect.value);
+      if (start >= end) {
+        if (document.activeElement === startSelect) {
+          if (start === 24) start = 23;
+          else end = start + 1;
+        } else {
+          if (end === 8) end = 9;
+          else start = end - 1;
+        }
+      }
+      timetableStartHour = start;
+      timetableEndHour = end;
+      startSelect.value = String(start);
+      endSelect.value = String(end);
+      updateTimetableFilterSummary();
+      renderCurrentView();
+    }
+
+    // --- TIMETABLE VIEW ---
+    function renderWeekView() {
+      const weekStart = getStartOfWeek(currentViewDate);
+      const weekHeaders = document.getElementById('weekHeaders');
+      const rowsContainer = document.getElementById('weekGridRows');
+
+      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      weekHeaders.innerHTML = '<div class="text-slate-400 dark:text-slate-500 font-semibold py-1">Time</div>';
+
+      const weekDates = [];
+      const visibleDayIndexes = timetableVisibleDays;
+      const visibleWeekDates = visibleDayIndexes.map(dayIndex => {
+        const date = new Date(weekStart);
+        date.setDate(weekStart.getDate() + dayIndex);
+        return date;
+      });
+      const gridColumns = `var(--time-column-width) repeat(${visibleDayIndexes.length}, minmax(0, 1fr))`;
+      weekHeaders.style.gridTemplateColumns = gridColumns;
+      rowsContainer.style.setProperty('--visible-day-count', String(visibleDayIndexes.length));
+      const todayISO = getISODate(new Date());
+
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(weekStart);
+        d.setDate(weekStart.getDate() + i);
+        weekDates.push(d);
+      }
+      visibleDayIndexes.forEach(dayIndex => {
+        const d = weekDates[dayIndex];
+        const iso = getISODate(d);
+        const isToday = iso === todayISO;
+        const dayHeader = document.createElement('div');
+        dayHeader.className = `py-1 rounded-lg transition-colors cursor-pointer hover:bg-sky-100/50 dark:hover:bg-slate-700/50 ${
+          isToday ? 'bg-sky-50 dark:bg-sky-950/60 font-bold text-sky-700 dark:text-teal-300' : ''
+        }`;
+        dayHeader.onclick = () => openModalForDate(iso);
+        dayHeader.innerHTML = `
+          <div class="text-[11px] uppercase tracking-wider opacity-75">${days[dayIndex]}</div>
+          <div class="text-xs font-extrabold">${d.getDate()}</div>
+        `;
+        weekHeaders.appendChild(dayHeader);
+      });
+
+      const baseHourHeight = window.matchMedia('(max-width: 640px)').matches
+        ? 60
+        : window.matchMedia('(max-width: 1024px)').matches ? 64 : 68;
+      const visibleHourCount = timetableEndHour - timetableStartHour;
+      const HOUR_HEIGHT = Math.max(
+        baseHourHeight,
+        Math.floor((window.innerHeight * 0.76) / visibleHourCount)
+      );
+      rowsContainer.innerHTML = '';
+      const hours = Array.from(
+        { length: visibleHourCount + 1 },
+        (_, index) => timetableStartHour + index
+      );
+
+      hours.forEach(hour => {
+        const row = document.createElement('div');
+        row.style.height = `${HOUR_HEIGHT}px`;
+        row.style.gridTemplateColumns = gridColumns;
+        row.className = 'timetable-grid border-b border-slate-100 dark:border-slate-800 relative text-xs';
+
+        // Time Label
+        const timeCol = document.createElement('div');
+        timeCol.className = 'border-r border-slate-100 dark:border-slate-800 p-2 text-slate-400 dark:text-slate-500 font-semibold text-right text-[11px] bg-slate-50/50 dark:bg-slate-800/40 select-none flex items-center justify-end';
+        timeCol.innerText = formatTimetableHour(hour);
+        row.appendChild(timeCol);
+
+        visibleDayIndexes.forEach(dayIdx => {
+          const slot = document.createElement('div');
+          slot.className = 'border-r border-slate-100/80 dark:border-slate-800/80 p-1 relative hover:bg-sky-50/40 dark:hover:bg-slate-800/60 transition cursor-pointer group';
+          const targetDate = weekDates[dayIdx];
+          const iso = getISODate(targetDate);
+          slot.onclick = () => openModalForDate(iso, null, hour);
+          
+          row.appendChild(slot);
+        });
+
+        rowsContainer.appendChild(row);
+      });
+
+      // Overlay scheduled classes & notes
+      visibleWeekDates.forEach((wDate, dayColIndex) => {
+        const status = getAcademicStatus(wDate);
+        const dayOfWeek = wDate.getDay();
+        const iso = getISODate(wDate);
+        const dayNotes = subjectNotes[iso] || [];
+
+        const events = [];
+        if (status.isTeaching) {
+          WEEKLY_CLASSES.filter(c => c.dayOfWeek === dayOfWeek).forEach(classItem => {
+            if (selectedFilterCourse !== 'ALL' && classItem.courseCode !== selectedFilterCourse) return;
+            const classStatus = getClassSessionStatus(iso, classItem);
+            events.push({
+              kind: 'class',
+              data: classItem,
+              status: classStatus,
+              sessionDate: iso,
+              startHour: timeStringToHours(classItem.startTime),
+              endHour: timeStringToHours(classItem.endTime)
+            });
+          });
+        }
+        Object.values(classSessionStatuses).forEach(classStatus => {
+          if (!classStatus || classStatus.type !== 'rescheduled' || classStatus.replacementDate !== iso) return;
+          if (!classStatus.classData || (selectedFilterCourse !== 'ALL' && classStatus.classData.courseCode !== selectedFilterCourse)) return;
+          events.push({
+            kind: 'replacement',
+            data: classStatus.classData,
+            status: classStatus,
+            sessionDate: classStatus.sourceDate,
+            startHour: timeStringToHours(classStatus.replacementStartTime),
+            endHour: timeStringToHours(classStatus.replacementEndTime)
+          });
+        });
+        dayNotes.forEach((note, noteIndex) => {
+          if (note.sessionKey || (selectedFilterCourse !== 'ALL' && note.courseCode !== selectedFilterCourse)) return;
+          const startHour = timeStringToHours(note.time);
+          if (startHour === null || startHour < 8 || startHour >= 24) return;
+          const endHour = timeStringToHours(note.endTime);
+          events.push({
+            kind: 'note',
+            data: note,
+            index: noteIndex,
+            startHour,
+            endHour: endHour !== null && endHour > startHour ? endHour : startHour + 0.75
+          });
+        });
+
+        for (let index = events.length - 1; index >= 0; index--) {
+          const event = events[index];
+          if (event.endHour <= timetableStartHour || event.startHour >= timetableEndHour) {
+            events.splice(index, 1);
+            continue;
+          }
+          event.startHour = Math.max(event.startHour, timetableStartHour);
+          event.endHour = Math.min(event.endHour, timetableEndHour);
+        }
+        events.sort((a, b) => a.startHour - b.startHour || a.endHour - b.endHour);
+        const eventGroups = [];
+        events.forEach(event => {
+          const currentGroup = eventGroups[eventGroups.length - 1];
+          if (currentGroup && event.startHour < currentGroup.endHour) {
+            currentGroup.events.push(event);
+            currentGroup.endHour = Math.max(currentGroup.endHour, event.endHour);
+          } else {
+            eventGroups.push({ startHour: event.startHour, endHour: event.endHour, events: [event] });
+          }
+        });
+
+        eventGroups.forEach(group => {
+          const groupHeight = Math.max(
+            (group.endHour - group.startHour) * HOUR_HEIGHT - 4,
+            group.events.length * 25
+          );
+          const wrapper = document.createElement('div');
+          wrapper.style.position = 'absolute';
+          wrapper.style.top = `${(group.startHour - timetableStartHour) * HOUR_HEIGHT + 2}px`;
+          wrapper.style.left = `calc(var(--time-column-width) + (100% - var(--time-column-width)) * ${dayColIndex} / var(--visible-day-count) + 4px)`;
+          wrapper.style.width = `calc((100% - var(--time-column-width)) / var(--visible-day-count) - 8px)`;
+          wrapper.style.height = `${groupHeight}px`;
+          wrapper.className = `z-25 rounded-xl p-1 border shadow-sm flex flex-col gap-1 overflow-hidden ${
+            group.events.length > 1
+              ? 'bg-white/95 dark:bg-slate-900/95 border-slate-300 dark:border-slate-600'
+              : 'border-transparent bg-transparent'
+          }`;
+
+          group.events.forEach(event => {
+            const isClass = event.kind !== 'note';
+            const isReplacement = event.kind === 'replacement';
+            const isSchedule = !isClass && event.data.category === 'Schedule';
+            const item = event.data;
+            const colors = SUBJECT_COLORS[item.courseCode] || SUBJECT_COLORS['General'];
+            const itemBox = document.createElement('div');
+            itemBox.style.minHeight = `${Math.max(22, (groupHeight - 8) / group.events.length)}px`;
+            const statusBoxStyle = isClass && event.status
+              ? ({
+                rescheduled: 'border-sky-400 dark:border-sky-700 bg-sky-50/90 dark:bg-sky-950/60',
+                blended: 'border-violet-300 dark:border-violet-800 bg-violet-50/90 dark:bg-violet-950/50',
+                tba: 'border-dashed border-amber-400 dark:border-amber-700 bg-amber-50/90 dark:bg-amber-950/50',
+                online: 'border-cyan-300 dark:border-cyan-800 bg-cyan-50/90 dark:bg-cyan-950/40',
+                cancelled: 'opacity-50'
+              }[event.status.type] || '')
+              : '';
+            itemBox.className = `min-h-0 flex-1 rounded-lg ${isSchedule ? 'px-2 py-1.5' : 'px-1.5 py-1'} ${colors.bg} ${colors.text} border ${colors.border} overflow-hidden cursor-pointer hover:shadow-sm ${statusBoxStyle} ${
+              !isClass && item.completed ? 'opacity-60' : ''
+            }`;
+            const itemTitle = isClass ? item.fullName : item.text;
+            const itemType = isClass ? item.type : item.category;
+            const itemTime = isReplacement
+              ? `${event.status.replacementStartTime} - ${event.status.replacementEndTime}`
+              : isClass
+                ? `${item.startTime} - ${item.endTime}`
+                : formatTimeDisplay(item.time, item.endTime);
+            const itemDetails = isReplacement
+              ? (event.status.meetingRoomLink || item.room)
+              : isClass
+                ? event.status?.type === 'online' ? '' : item.room
+                : (GROUP_NAMES[item.courseCode] || item.courseCode);
+            const itemDetailsMarkup = isReplacement
+              ? classLocationMarkup(itemDetails)
+              : escapeHTML(itemDetails);
+            const statusBadge = isClass && event.status?.type !== 'online' ? classStatusBadgeMarkup(event.status) : '';
+            const statusNote = isClass && event.status?.type === 'blended'
+              ? `<div class="class-status-note mt-1 line-clamp-2 whitespace-normal text-[8px] font-medium">${escapeHTML(event.status.notes || 'Self-paced materials assigned.')}</div>`
+              : isClass && event.status?.type === 'tba'
+                ? '<div class="class-status-note mt-1 text-[8px] font-semibold">Waiting for replacement details</div>'
+                : isClass && event.status?.type === 'cancelled' && event.status.reason
+                  ? `<div class="class-status-note mt-1 line-clamp-1 text-[8px]">${escapeHTML(event.status.reason)}</div>`
+                  : isClass && event.status?.type === 'rescheduled' && !isReplacement
+                    ? `<div class="class-status-note mt-1 text-[8px] font-semibold">Replacement: ${escapeHTML(event.status.replacementDate)} ${escapeHTML(event.status.replacementStartTime)}–${escapeHTML(event.status.replacementEndTime)}</div>`
+                    : '';
+            const classNotes = isClass
+              ? (subjectNotes[event.sessionDate] || []).filter(note => note.sessionKey === `${event.sessionDate}_${item.courseCode}_${item.startTime}`)
+              : [];
+            const childNotes = !isClass && Array.isArray(item.children) ? item.children : [];
+            const attachedNotes = isClass ? classNotes : childNotes;
+            const noteList = calendarNoteBulletListMarkup(
+              attachedNotes,
+              3,
+              'mt-1 max-h-12 overflow-y-auto space-y-0.5 text-[10px] sm:text-[11px] leading-snug font-medium'
+            );
+            itemBox.innerHTML = isSchedule
+              ? `
+                <div class="font-extrabold text-[7px] sm:text-[9px] lg:text-sm leading-tight break-all">${escapeHTML(itemTitle)}</div>
+                <div class="flex items-center justify-between gap-1 mt-1 text-[9px] leading-tight">
+                  <span class="font-extrabold uppercase truncate">${escapeHTML(itemDetails)}</span>
+                  <span class="font-semibold shrink-0">${escapeHTML(itemTime)}</span>
+                </div>
+                ${noteList}
+              `
+              : `
+                <div class="${isClass ? 'class-event-time-row' : 'note-event-time-row'} flex items-center justify-between gap-1 text-[9px] leading-tight">
+                  <span class="flex min-w-0 items-center gap-1">
+                    <span class="font-extrabold uppercase truncate">${escapeHTML(itemType)}</span>
+                    ${isClass && event.status?.type === 'online' ? classStatusBadgeMarkup(event.status) : ''}
+                  </span>
+                  <span class="font-semibold shrink-0">${escapeHTML(itemTime)}</span>
+                </div>
+                ${isClass ? statusBadge : ''}
+                <div class="${isClass ? 'class-event-title' : 'note-event-title'} font-bold text-[10px] leading-tight break-words line-clamp-2 ${isClass && event.status?.type === 'cancelled' ? 'line-through' : ''}">${escapeHTML(itemTitle)}</div>
+                <div class="${isClass ? 'class-event-details' : 'note-event-details'} text-[8px] opacity-75 font-semibold truncate">${itemDetailsMarkup}</div>
+                ${statusNote}
+                ${noteList}
+              `;
+            itemBox.onclick = clickEvent => {
+              clickEvent.stopPropagation();
+              if (isClass) {
+                openClassSessionModal(event.sessionDate, item, isReplacement);
+              } else {
+                openModalForDate(iso, item.courseCode);
+                editNote(event.index);
+              }
+            };
+            wrapper.appendChild(itemBox);
+          });
+          rowsContainer.appendChild(wrapper);
+        });
+
+        let untimedOffsetCount = 0;
+        dayNotes.forEach((note, noteIndex) => {
+          if (note.sessionKey || timeStringToHours(note.time) !== null) return;
+          if (selectedFilterCourse !== 'ALL' && note.courseCode !== selectedFilterCourse) return;
+          const colors = SUBJECT_COLORS[note.courseCode] || SUBJECT_COLORS['General'];
+          const pin = document.createElement('button');
+          pin.type = 'button';
+          pin.style.position = 'absolute';
+          pin.style.top = `${Math.max(0, visibleHourCount - 1) * HOUR_HEIGHT + 3 + (untimedOffsetCount++ * 27)}px`;
+          pin.style.left = `calc(var(--time-column-width) + (100% - var(--time-column-width)) * ${dayColIndex} / var(--visible-day-count) + 3px)`;
+          pin.style.width = `calc((100% - var(--time-column-width)) / var(--visible-day-count) - 6px)`;
+          pin.style.height = '24px';
+          pin.className = `z-10 rounded-lg px-2 py-0.5 ${colors.bg} ${colors.text} border ${colors.border} text-[10px] font-medium flex items-center justify-between truncate shadow-2xs hover:shadow`;
+          pin.innerHTML = `<span class="truncate">${escapeHTML(note.text)}</span><span class="text-[8px] uppercase ml-1 shrink-0 font-bold">${escapeHTML(note.category)}</span>`;
+          pin.onclick = clickEvent => {
+            clickEvent.stopPropagation();
+            openModalForDate(iso, note.courseCode);
+            editNote(noteIndex);
+          };
+          rowsContainer.appendChild(pin);
+        });
+      });
+    }
+
+    // --- MONTH VIEW ---
+    function renderMonthView() {
+      const grid = document.getElementById('monthGrid');
+      grid.innerHTML = '';
+
+      const year = currentViewDate.getFullYear();
+      const month = currentViewDate.getMonth();
+
+      const firstDayOfMonth = new Date(year, month, 1);
+      let startDayOfWeek = firstDayOfMonth.getDay() - 1;
+      if (startDayOfWeek === -1) startDayOfWeek = 6;
+
+      const startDate = new Date(year, month, 1 - startDayOfWeek);
+      const todayISO = getISODate(new Date());
+
+      for (let i = 0; i < 35; i++) {
+        const cellDate = new Date(startDate);
+        cellDate.setDate(startDate.getDate() + i);
+
+        const isoDate = getISODate(cellDate);
+        const isCurrentMonth = cellDate.getMonth() === month;
+        const isToday = isoDate === todayISO;
+        const status = getAcademicStatus(cellDate);
+        const items = getItemsForDate(cellDate);
+
+        const cell = document.createElement('div');
+        cell.className = `min-h-[140px] sm:min-h-[155px] p-2 bg-white dark:bg-slate-900 flex flex-col justify-between transition-colors hover:bg-sky-50/40 dark:hover:bg-slate-800/50 cursor-pointer overflow-y-auto ${
+          !isCurrentMonth ? 'text-slate-300 dark:text-slate-600 bg-slate-50/50 dark:bg-slate-950/40' : 'text-slate-700 dark:text-slate-200'
+        }`;
+        cell.onclick = () => openModalForDate(isoDate);
+
+        // Date row
+        const topRow = document.createElement('div');
+        topRow.className = 'flex items-center justify-between mb-1.5';
+
+        const dayNumSpan = document.createElement('span');
+        dayNumSpan.className = `text-xs sm:text-sm font-semibold inline-flex items-center justify-center ${
+          isToday ? 'w-6 h-6 rounded-full bg-sky-600 text-white shadow-2xs' : (isCurrentMonth ? 'text-slate-800 dark:text-slate-100' : 'text-slate-400 dark:text-slate-600')
+        }`;
+
+        if (cellDate.getDate() === 1) {
+          const shortMonth = cellDate.toLocaleString('default', { month: 'short' });
+          dayNumSpan.innerText = `1 ${shortMonth}`;
+          dayNumSpan.classList.add('px-1.5', 'w-auto');
+        } else {
+          dayNumSpan.innerText = cellDate.getDate();
+        }
+        topRow.appendChild(dayNumSpan);
+
+        if (cellDate.getDay() === 1 && status.isTeaching && isCurrentMonth) {
+          const weekBadge = document.createElement('span');
+          weekBadge.className = 'text-[9px] font-bold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 px-1.5 py-0.5 rounded';
+          weekBadge.innerText = `W${status.weekNumber}`;
+          topRow.appendChild(weekBadge);
+        }
+
+        cell.appendChild(topRow);
+
+        // Items preview
+        const itemsList = document.createElement('div');
+        itemsList.className = 'space-y-1.5 flex-1';
+
+        const maxDisplay = 2;
+        items.slice(0, maxDisplay).forEach(item => {
+          const chip = document.createElement('div');
+          const color = SUBJECT_COLORS[item.courseCode] || SUBJECT_COLORS['General'];
+
+          const classStatusStyle = item.classStatus
+            ? ({
+              rescheduled: 'border-sky-400 dark:border-sky-700 bg-sky-50 dark:bg-sky-950/50',
+              blended: 'border-violet-300 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/40',
+              tba: 'border-dashed border-amber-400 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40',
+              online: 'border-cyan-300 dark:border-cyan-800 bg-cyan-50 dark:bg-cyan-950/40',
+              cancelled: 'opacity-50'
+            }[item.classStatus.type] || '')
+            : '';
+          chip.className = `text-[10px] leading-tight p-1.5 rounded-lg font-medium border ${color.bg} ${color.text} ${color.border} ${classStatusStyle} flex flex-col gap-0.5 ${item.isSubjectNote || item.classData ? 'cursor-pointer' : ''}`;
+          
+          if (item.isSubjectNote) {
+            chip.innerHTML = item.category === 'Schedule'
+              ? `
+                <div class="font-extrabold text-[11px] leading-tight break-words">${escapeHTML(item.title)}</div>
+                <div class="flex justify-between gap-1 text-[9px] opacity-75 mt-1">
+                  <span class="font-bold uppercase truncate">${escapeHTML(GROUP_NAMES[item.courseCode] || item.courseCode)}</span>
+                  <span class="font-semibold shrink-0">${escapeHTML(item.time)}</span>
+                </div>
+                ${calendarNoteBulletListMarkup(item.children || [], 2, 'mt-1 space-y-0.5 text-[11px] leading-snug')}
+              `
+              : `
+                <div class="flex items-center justify-between gap-1">
+                  <span class="text-[9px] font-bold uppercase tracking-wider opacity-75">${escapeHTML(item.category)}</span>
+                  ${item.time ? `<span class="text-[9px] font-semibold opacity-75">${escapeHTML(item.time)}</span>` : ''}
+                </div>
+                <div class="truncate font-medium">${escapeHTML(item.title)}</div>
+                ${calendarNoteBulletListMarkup(item.children || [], 2, 'mt-1 space-y-0.5 text-[11px] leading-snug')}
+              `;
+            chip.onclick = event => {
+              event.stopPropagation();
+              openModalForDate(isoDate, item.courseCode);
+              editNote(item.originalIndex);
+            };
+          } else {
+            const isLec = (item.type || '').toLowerCase() === 'lecture';
+            const typeBadgeStyle = isLec 
+              ? 'bg-blue-600 text-white dark:bg-blue-500' 
+              : 'bg-emerald-600 text-white dark:bg-emerald-500';
+            const classNotes = (subjectNotes[item.sessionDate || isoDate] || []).filter(note =>
+              note.sessionKey === getClassSessionKey(item.sessionDate || isoDate, item.classData)
+            );
+
+            chip.innerHTML = `
+              <div class="flex items-center justify-between gap-1 mb-0.5">
+                <span class="inline-flex min-w-0 items-center gap-1">
+                  <span class="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-bold uppercase ${typeBadgeStyle}">
+                    ${escapeHTML(item.type)}
+                  </span>
+                  ${item.classStatus?.type === 'online' ? classStatusBadgeMarkup(item.classStatus) : ''}
+                </span>
+                <span class="text-[9px] opacity-75 font-semibold">${escapeHTML(item.time)}</span>
+              </div>
+              ${item.classStatus?.type === 'online' ? '' : classStatusBadgeMarkup(item.classStatus)}
+              <div class="font-bold text-[10px] leading-snug whitespace-normal break-words ${item.classStatus?.type === 'cancelled' ? 'line-through' : ''}">${escapeHTML(item.title)}</div>
+              ${item.classStatus?.type === 'blended'
+                ? `<div class="line-clamp-2 whitespace-normal text-[9px]">${escapeHTML(item.classStatus.notes || 'Self-paced materials assigned.')}</div>`
+                : item.classStatus?.type === 'rescheduled' && !item.isReplacement
+                  ? `<div class="text-[9px]">Replacement: ${escapeHTML(item.classStatus.replacementDate)} ${escapeHTML(item.classStatus.replacementStartTime)}–${escapeHTML(item.classStatus.replacementEndTime)}</div>`
+                  : item.classStatus?.type === 'cancelled' && item.classStatus.reason
+                    ? `<div class="line-clamp-1 text-[9px]">${escapeHTML(item.classStatus.reason)}</div>`
+                    : ''}
+              ${item.isReplacement ? `<div class="text-[9px]">${classLocationMarkup(item.room)}</div>` : ''}
+              ${calendarNoteBulletListMarkup(classNotes, 2, 'mt-1 space-y-0.5 text-[11px] leading-snug')}
+            `;
+            chip.onclick = event => {
+              event.stopPropagation();
+              openClassSessionModal(item.sessionDate, item.classData, item.isReplacement);
+            };
+          }
+
+          itemsList.appendChild(chip);
+        });
+
+        if (items.length > maxDisplay) {
+          const more = document.createElement('div');
+          more.className = 'text-[10px] text-sky-600 dark:text-teal-400 font-bold pl-1';
+          more.innerText = `+${items.length - maxDisplay} more`;
+          itemsList.appendChild(more);
+        }
+
+        cell.appendChild(itemsList);
+        grid.appendChild(cell);
+      }
+    }
+
+    function isKanbanGroup(courseCode) {
+      return courseCode === 'Syncronym' || courseCode === 'Auralis Marketing';
+    }
+
+    function getKanbanStatus(note) {
+      if (note.completed) return 'done';
+      return KANBAN_COLUMNS.some(column => column.key === note.status)
+        ? note.status
+        : 'backlog';
+    }
+
+    function renderKanbanBoard() {
+      const board = document.getElementById('kanbanBoard');
+      const heading = document.getElementById('kanbanBoardHeading');
+      const count = document.getElementById('kanbanBoardCount');
+      if (!board || !heading || !count) return;
+
+      heading.textContent = `${GROUP_NAMES[selectedFilterCourse] || selectedFilterCourse} Board`;
+      const items = [];
+      Object.entries(subjectNotes).forEach(([isoDate, notes]) => {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate) || !Array.isArray(notes)) return;
+        notes.forEach((note, index) => {
+          if (note.courseCode !== selectedFilterCourse) return;
+          items.push({ note, isoDate, index, status: getKanbanStatus(note) });
+        });
+      });
+      items.sort((first, second) =>
+        first.isoDate.localeCompare(second.isoDate)
+        || String(first.note.time || '').localeCompare(String(second.note.time || ''))
+        || String(first.note.text || '').localeCompare(String(second.note.text || ''))
+      );
+      count.textContent = `${items.length} item${items.length === 1 ? '' : 's'}`;
+      board.innerHTML = '';
+
+      KANBAN_COLUMNS.forEach(column => {
+        const columnItems = items.filter(item => item.status === column.key);
+        const section = document.createElement('section');
+        section.className = `min-w-0 rounded-2xl border p-2.5 ${column.style}`;
+        section.setAttribute('aria-label', `${column.label}, ${columnItems.length} items`);
+
+        const header = document.createElement('div');
+        header.className = 'flex items-center justify-between gap-2 px-1 pb-2';
+        const title = document.createElement('h4');
+        title.className = 'text-xs font-extrabold text-slate-800 dark:text-slate-100';
+        title.textContent = column.label;
+        const total = document.createElement('span');
+        total.className = 'rounded-full bg-white/80 dark:bg-slate-900/80 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-300';
+        total.textContent = String(columnItems.length);
+        header.append(title, total);
+
+        const cardList = document.createElement('div');
+        cardList.className = 'min-h-24 space-y-2';
+        if (columnItems.length === 0) {
+          const empty = document.createElement('p');
+          empty.className = 'rounded-xl border border-dashed border-slate-300/80 dark:border-slate-600 px-2 py-4 text-center text-[10px] text-slate-400 dark:text-slate-500';
+          empty.textContent = 'No items';
+          cardList.appendChild(empty);
+        }
+
+        columnItems.forEach(({ note, isoDate, index }) => {
+          const card = document.createElement('article');
+          card.className = 'rounded-xl border border-white/80 dark:border-slate-700 bg-white dark:bg-slate-900 p-2.5 shadow-sm';
+
+          const openButton = document.createElement('button');
+          openButton.type = 'button';
+          openButton.className = 'block w-full text-left';
+          openButton.setAttribute('aria-label', `Edit ${note.text || 'untitled item'}`);
+          openButton.onclick = () => {
+            openModalForDate(isoDate, note.courseCode);
+            editNote(index);
+          };
+
+          const itemTitle = document.createElement('span');
+          itemTitle.className = `block break-words text-xs font-bold text-slate-800 dark:text-slate-100 ${column.key === 'done' ? 'line-through opacity-60' : ''}`;
+          itemTitle.textContent = note.text || 'Untitled item';
+          const details = document.createElement('span');
+          details.className = 'mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-slate-500 dark:text-slate-400';
+          const category = document.createElement('span');
+          category.className = 'rounded-md bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 font-semibold';
+          category.textContent = note.category || 'Task';
+          const date = document.createElement('span');
+          date.textContent = parseISODate(isoDate).toLocaleDateString('en-US', {
+            weekday: 'short', month: 'short', day: 'numeric'
+          });
+          details.append(category, date);
+          if (note.time) {
+            const time = document.createElement('span');
+            time.textContent = formatTimeDisplay(note.time, note.endTime);
+            details.appendChild(time);
+          }
+          openButton.append(itemTitle, details);
+
+          const statusSelect = document.createElement('select');
+          statusSelect.className = 'mt-2 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-2 py-1.5 text-[10px] font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-400';
+          statusSelect.setAttribute('aria-label', `Move ${note.text || 'item'} to another stage`);
+          KANBAN_COLUMNS.forEach(option => {
+            const statusOption = document.createElement('option');
+            statusOption.value = option.key;
+            statusOption.textContent = option.label;
+            statusSelect.appendChild(statusOption);
+          });
+          statusSelect.value = column.key;
+          statusSelect.onchange = () => moveKanbanItem(isoDate, index, statusSelect.value);
+
+          card.append(openButton, statusSelect);
+          cardList.appendChild(card);
+        });
+
+        section.append(header, cardList);
+        board.appendChild(section);
+      });
+    }
+
+    function moveKanbanItem(isoDate, index, status) {
+      if (!KANBAN_COLUMNS.some(column => column.key === status)) return;
+      const note = (subjectNotes[isoDate] || [])[index];
+      if (!note || note.courseCode !== selectedFilterCourse) return;
+      note.status = status;
+      note.completed = status === 'done';
+      saveSubjectNotes();
+      renderCurrentView();
+    }
+
+    function renderCurrentView() {
+      if (isKanbanView && !isKanbanGroup(selectedFilterCourse)) isKanbanView = false;
+      updateHeaderStatus();
+      document.getElementById('dateNavigationControls').classList.toggle('hidden', isKanbanView);
+      document.getElementById('timetableFilters').classList.toggle('hidden', isKanbanView || currentView !== 'week');
+      document.getElementById('viewBtnBoard').classList.toggle('hidden', !isKanbanGroup(selectedFilterCourse));
+      document.getElementById('weekViewContainer').classList.toggle('hidden', isKanbanView || currentView !== 'week');
+      document.getElementById('monthViewContainer').classList.toggle('hidden', isKanbanView || currentView !== 'month');
+      document.getElementById('kanbanBoardContainer').classList.toggle('hidden', !isKanbanView);
+      if (isKanbanView) {
+        renderKanbanBoard();
+      } else if (currentView === 'week') {
+        renderWeekView();
+      } else {
+        renderMonthView();
+      }
+      renderCountdowns();
+      lucide.createIcons();
+      updateViewButtonStyles();
+    }
+
+    /* ==========================================================================
+       5. USER NAVIGATION & VIEW SWITCHING
+       ========================================================================== */
+    function switchView(viewMode) {
+      if (viewMode === 'board') {
+        if (!isKanbanGroup(selectedFilterCourse)) return;
+        isKanbanView = true;
+      } else {
+        if (viewMode !== 'week' && viewMode !== 'month') return;
+        currentView = viewMode;
+        isKanbanView = false;
+      }
+      renderCurrentView();
+    }
+
+    function updateViewButtonStyles() {
+      const btnWeek = document.getElementById('viewBtnWeek');
+      const btnMonth = document.getElementById('viewBtnMonth');
+      const btnBoard = document.getElementById('viewBtnBoard');
+      const activeClass = 'px-3 py-1.5 rounded-lg bg-white dark:bg-slate-700 shadow-xs text-sky-700 dark:text-teal-300 font-bold transition';
+      const inactiveClass = 'px-3 py-1.5 rounded-lg hover:text-sky-700 dark:hover:text-teal-300 transition';
+
+      btnWeek.className = !isKanbanView && currentView === 'week' ? activeClass : inactiveClass;
+      btnMonth.className = !isKanbanView && currentView === 'month' ? activeClass : inactiveClass;
+      btnBoard.className = `${isKanbanView ? activeClass : inactiveClass}${isKanbanGroup(selectedFilterCourse) ? '' : ' hidden'}`;
+    }
+
+    function navPrev() {
+      if (currentView === 'week') {
+        currentViewDate.setDate(currentViewDate.getDate() - 7);
+      } else {
+        currentViewDate.setMonth(currentViewDate.getMonth() - 1);
+      }
+      renderCurrentView();
+    }
+
+    function navNext() {
+      if (currentView === 'week') {
+        currentViewDate.setDate(currentViewDate.getDate() + 7);
+      } else {
+        currentViewDate.setMonth(currentViewDate.getMonth() + 1);
+      }
+      renderCurrentView();
+    }
+
+    function navToday() {
+      currentViewDate = new Date();
+      renderCurrentView();
+    }
+
+    function setCourseFilterFromSelect(code) {
+      selectedFilterCourse = code;
+      if (!isKanbanGroup(code)) isKanbanView = false;
+      renderCurrentView();
+    }
+
+    function toggleTodoSidebar() {
+      const sidebar = document.getElementById('todoSidebar');
+      if (sidebar.classList.contains('todo-sidebar-closed')) openTodoSidebar();
+      else closeTodoSidebar();
+    }
+
+    function openTodoSidebar() {
+      document.getElementById('todoSidebar').classList.remove('todo-sidebar-closed');
+      document.getElementById('todoSidebar').setAttribute('aria-hidden', 'false');
+      document.getElementById('todoBackdrop').classList.add('todo-backdrop-open');
+      document.getElementById('todoBackdrop').setAttribute('aria-hidden', 'false');
+      document.getElementById('todoSidebarToggle').setAttribute('aria-expanded', 'true');
+      document.getElementById('todoInput').focus();
+    }
+
+    function closeTodoSidebar() {
+      document.getElementById('todoSidebar').classList.add('todo-sidebar-closed');
+      document.getElementById('todoSidebar').setAttribute('aria-hidden', 'true');
+      document.getElementById('todoBackdrop').classList.remove('todo-backdrop-open');
+      document.getElementById('todoBackdrop').setAttribute('aria-hidden', 'true');
+      document.getElementById('todoSidebarToggle').setAttribute('aria-expanded', 'false');
+    }
+
+    function saveTodoItems() {
+      try {
+        localStorage.setItem('planner_todo_items_v1', JSON.stringify(todoItems));
+      } catch (error) {
+        console.error('Could not save to-do list', error);
+        showAppNotice('Could not save the to-do list in this browser.');
+      }
+    }
+
+    function setTodoPeriod(period) {
+      if (!Object.prototype.hasOwnProperty.call(todoItems, period)) return;
+      selectedTodoPeriod = period;
+      renderTodoList();
+    }
+
+    function renderTodoList() {
+      const list = document.getElementById('todoItems');
+      const emptyState = document.getElementById('todoEmptyState');
+      if (!list || !emptyState) return;
+      list.innerHTML = '';
+      document.querySelectorAll('.todo-period-tab').forEach(button => {
+        const selected = button.id === `todoTab${selectedTodoPeriod[0].toUpperCase()}${selectedTodoPeriod.slice(1)}`;
+        button.className = `todo-period-tab rounded-lg px-2 py-2 text-[11px] font-bold ${
+          selected
+            ? 'bg-white dark:bg-slate-700 text-teal-700 dark:text-teal-300 shadow-sm'
+            : 'text-slate-500 dark:text-slate-400'
+        }`;
+      });
+      const items = todoItems[selectedTodoPeriod];
+      emptyState.classList.toggle('hidden', items.length > 0);
+      items.forEach((item, index) => {
+        const row = document.createElement('li');
+        row.className = 'flex items-start gap-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 px-2.5 py-2';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = Boolean(item.completed);
+        checkbox.className = 'mt-0.5 accent-teal-600';
+        checkbox.setAttribute('aria-label', `Complete ${item.text}`);
+        checkbox.onchange = () => {
+          item.completed = checkbox.checked;
+          saveTodoItems();
+          renderTodoList();
+        };
+        const text = document.createElement('span');
+        text.className = `min-w-0 flex-1 break-words text-xs ${item.completed ? 'line-through text-slate-400' : ''}`;
+        text.textContent = item.text;
+        const number = document.createElement('span');
+        number.className = 'w-5 shrink-0 text-right text-[11px] font-bold text-teal-700 dark:text-teal-300';
+        number.textContent = `${index + 1}.`;
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'text-slate-400 hover:text-rose-600 text-xs font-semibold';
+        remove.textContent = '×';
+        remove.title = 'Delete to-do';
+        remove.onclick = () => {
+          todoItems[selectedTodoPeriod].splice(index, 1);
+          saveTodoItems();
+          renderTodoList();
+        };
+        row.append(number, checkbox, text, remove);
+        list.appendChild(row);
+      });
+    }
+
+    function addTodoItem(event) {
+      event.preventDefault();
+      const input = document.getElementById('todoInput');
+      const text = input.value.trim();
+      if (!text) {
+        input.focus();
+        return;
+      }
+      todoItems[selectedTodoPeriod].push({
+        id: `todo-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        text,
+        completed: false
+      });
+      input.value = '';
+      saveTodoItems();
+      renderTodoList();
+    }
+
+    async function installPlannerApp() {
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        await deferredInstallPrompt.userChoice;
+        deferredInstallPrompt = null;
+        document.getElementById('installAppBtn').classList.add('hidden');
+        return;
+      }
+      showAppNotice('Open your browser menu and choose “Add to Home Screen” or “Install app”.');
+    }
+
+    function setupInstallableApp() {
+      window.addEventListener('beforeinstallprompt', event => {
+        event.preventDefault();
+        deferredInstallPrompt = event;
+        document.getElementById('installAppBtn').classList.remove('hidden');
+      });
+      window.addEventListener('appinstalled', () => {
+        document.getElementById('installAppBtn').classList.add('hidden');
+        showAppNotice('Schedule Planner was installed.');
+      });
+      if ('serviceWorker' in navigator && /^https?:$/.test(window.location.protocol)) {
+        navigator.serviceWorker.register('./service-worker.js').catch(error => {
+          console.error('Could not register the offline app worker', error);
+        });
+      }
+    }
+
+    /* ==========================================================================
+       6. GROUPED NOTES & TASK CRUD
+       ========================================================================== */
+    function openModalForDate(isoDateStr, preselectedCourse = null, selectedHour = null) {
+      activeModalDateStr = isoDateStr;
+      editingNoteIndex = null;
+      const dateObj = parseISODate(isoDateStr);
+      const status = getAcademicStatus(dateObj);
+
+      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      document.getElementById('modalDateTitle').innerText = dateObj.toLocaleDateString('en-US', options);
+      document.getElementById('modalPhaseTag').innerText = status.badgeText;
+      document.getElementById('newNoteDate').value = isoDateStr;
+      document.getElementById('newNoteInput').value = '';
+      document.getElementById('newNoteCategory').value = 'Task';
+      updateEntryFormMode();
+      document.getElementById('newNoteTime').value = '';
+      document.getElementById('newNoteEndTime').value = '';
+      document.getElementById('newNoteReminder').value = '30';
+      document.getElementById('newNoteReminderUnit').value = 'minutes';
+      document.getElementById('childNotesEditor').classList.add('hidden');
+      document.getElementById('childNoteInput').value = '';
+      document.getElementById('saveNoteBtn').innerText = 'Save Note / Task';
+      isTimeRangeMode = false;
+      document.getElementById('newNoteEndTime').classList.add('hidden');
+      document.getElementById('rangeBtnLabel').innerText = '+ Time Range';
+
+      const courseSelect = document.getElementById('newNoteCourse');
+      const defaultCourse = preselectedCourse || (selectedFilterCourse !== 'ALL' ? selectedFilterCourse : 'General');
+      if (courseSelect.querySelector(`option[value="${defaultCourse}"]`)) courseSelect.value = defaultCourse;
+      if (selectedHour !== null) {
+        const startHour = Math.min(Math.max(Number(selectedHour), 8), 23);
+        document.getElementById('newNoteTime').value = `${formatZero(startHour)}:00`;
+        document.getElementById('newNoteEndTime').value = `${formatZero(startHour === 23 ? 23 : startHour + 1)}:${startHour === 23 ? '59' : '00'}`;
+        isTimeRangeMode = true;
+        document.getElementById('newNoteEndTime').classList.remove('hidden');
+        document.getElementById('rangeBtnLabel').innerText = 'Single Time';
+      }
+
+      // Scheduled Classes on that date
+      const classesList = document.getElementById('modalClassesList');
+      classesList.innerHTML = '';
+
+      const dayOfWeek = dateObj.getDay();
+      const dayClasses = [];
+      if (status.isTeaching) {
+        WEEKLY_CLASSES.filter(c => c.dayOfWeek === dayOfWeek).forEach(classData => {
+          dayClasses.push({
+            classData,
+            classStatus: getClassSessionStatus(isoDateStr, classData),
+            sessionDate: isoDateStr,
+            isReplacement: false
+          });
+        });
+      }
+      Object.values(classSessionStatuses).forEach(classStatus => {
+        if (classStatus?.type === 'rescheduled' && classStatus.replacementDate === isoDateStr && classStatus.classData) {
+          dayClasses.push({
+            classData: classStatus.classData,
+            classStatus,
+            sessionDate: classStatus.sourceDate,
+            isReplacement: true
+          });
+        }
+      });
+
+      if (dayClasses.length === 0) {
+        classesList.innerHTML = `
+          <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 text-xs text-center border border-dashed border-slate-200 dark:border-slate-700">
+            No scheduled classes for this day.
+          </div>
+        `;
+      } else {
+        dayClasses.forEach(({ classData: c, classStatus, sessionDate, isReplacement }) => {
+          const colors = SUBJECT_COLORS[c.courseCode] || SUBJECT_COLORS['General'];
+          const isLec = c.type.toLowerCase() === 'lecture';
+          const typeBadgeStyle = isLec ? 'bg-blue-600 text-white' : 'bg-emerald-600 text-white';
+
+          const item = document.createElement('div');
+          const statusStyle = classStatus
+            ? ({
+              rescheduled: 'border-sky-400 dark:border-sky-700 bg-sky-50 dark:bg-sky-950/50',
+              blended: 'border-violet-300 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/40',
+              tba: 'border-dashed border-amber-400 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40',
+              online: 'border-cyan-300 dark:border-cyan-800 bg-cyan-50 dark:bg-cyan-950/40',
+              cancelled: 'opacity-50'
+            }[classStatus.type] || '')
+            : '';
+          item.className = `p-3 rounded-xl ${colors.bg} border ${colors.border} ${statusStyle} flex flex-col gap-1.5 text-xs`;
+          const displayStart = isReplacement ? classStatus.replacementStartTime : c.startTime;
+          const displayEnd = isReplacement ? classStatus.replacementEndTime : c.endTime;
+          const displayRoom = isReplacement
+            ? (classStatus.meetingRoomLink || c.room)
+            : classStatus?.type === 'online' ? '' : c.room;
+          item.innerHTML = `
+            <div class="flex items-center justify-between flex-wrap gap-1">
+              <span class="font-bold ${colors.text} text-sm ${classStatus?.type === 'cancelled' ? 'line-through' : ''}">${escapeHTML(c.fullName)}</span>
+              <div class="flex items-center gap-1.5">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase ${typeBadgeStyle}">${escapeHTML(c.type)}</span>
+                ${classStatus?.type === 'online' ? classStatusBadgeMarkup(classStatus) : ''}
+                <span class="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-white/80 dark:bg-slate-800 text-slate-700 dark:text-slate-200">${escapeHTML(displayStart)} - ${escapeHTML(displayEnd)}</span>
+              </div>
+            </div>
+            ${classStatus?.type === 'online' ? '' : classStatusBadgeMarkup(classStatus)}
+            ${displayRoom ? `<div class="text-[11px] text-slate-600 dark:text-slate-400 flex items-center gap-1.5">${classLocationMarkup(displayRoom)}</div>` : ''}
+            ${classStatus?.type === 'blended'
+              ? `<p class="whitespace-pre-wrap text-[11px] text-violet-800 dark:text-violet-200">${escapeHTML(classStatus.notes || 'Self-paced materials assigned.')}</p>`
+              : classStatus?.type === 'cancelled' && classStatus.reason
+                ? `<p class="text-[11px] text-rose-800 dark:text-rose-200">${escapeHTML(classStatus.reason)}</p>`
+                : classStatus?.type === 'rescheduled' && !isReplacement
+                  ? `<p class="text-[11px] text-sky-800 dark:text-sky-200">Replacement: ${escapeHTML(classStatus.replacementDate)} ${escapeHTML(classStatus.replacementStartTime)}–${escapeHTML(classStatus.replacementEndTime)}</p>`
+                  : ''}
+          `;
+          const actions = document.createElement('div');
+          actions.className = 'flex flex-wrap gap-2 pt-1';
+          const updateButton = document.createElement('button');
+          updateButton.type = 'button';
+          updateButton.className = 'rounded-lg bg-sky-600 px-2.5 py-1.5 text-[10px] font-bold text-white';
+          updateButton.textContent = 'Update Status';
+          updateButton.onclick = () => {
+            openClassSessionModal(sessionDate, c, isReplacement);
+            openClassStatusModal();
+          };
+          const cancelButton = document.createElement('button');
+          cancelButton.type = 'button';
+          cancelButton.className = 'rounded-lg border border-rose-200 dark:border-rose-900 px-2.5 py-1.5 text-[10px] font-bold text-rose-700 dark:text-rose-300';
+          cancelButton.textContent = 'Mark Cancelled';
+          cancelButton.onclick = () => {
+            openClassSessionModal(sessionDate, c, isReplacement);
+            openClassStatusModal('cancelled');
+          };
+          actions.append(updateButton, cancelButton);
+          item.appendChild(actions);
+          classesList.appendChild(item);
+        });
+      }
+
+      renderGroupedModalNotes();
+      document.getElementById('dayModal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function openScheduleForm(dateStr = getISODate(currentViewDate)) {
+      const selectedGroup = selectedFilterCourse === 'ALL' ? null : selectedFilterCourse;
+      openModalForDate(dateStr, selectedGroup);
+      document.getElementById('newNoteCategory').value = 'Schedule';
+      updateEntryFormMode();
+      document.getElementById('newNoteTime').value = '09:00';
+      document.getElementById('newNoteEndTime').value = '10:00';
+      document.getElementById('newNoteEndTime').classList.remove('hidden');
+      document.getElementById('rangeBtnLabel').innerText = 'Single Time';
+      isTimeRangeMode = true;
+      document.getElementById('newNoteInput').focus();
+    }
+
+    function updateEntryFormMode() {
+      const isSchedule = document.getElementById('newNoteCategory').value === 'Schedule';
+      document.getElementById('noteFormHeading').textContent = isSchedule ? 'Add Group Schedule' : 'Add Note / Task';
+      document.getElementById('noteTitleLabel').textContent = isSchedule ? 'Schedule name (displayed prominently)' : 'Note Title / Task Details';
+      document.getElementById('newNoteInput').placeholder = isSchedule
+        ? 'e.g. Team meeting, Study session...'
+        : 'e.g. Prepare briefing deck, Chapter 4 questions...';
+      document.getElementById('saveNoteBtn').textContent = isSchedule ? 'Save Schedule' : 'Save Note / Task';
+    }
+
+    function clearCustomReminder() {
+      document.getElementById('newNoteReminder').value = '';
+    }
+
+    function editNote(index) {
+      const note = (subjectNotes[activeModalDateStr] || [])[index];
+      if (!note) return;
+      editingNoteIndex = index;
+      document.getElementById('newNoteCourse').value = note.courseCode || 'General';
+      document.getElementById('newNoteDate').value = activeModalDateStr;
+      document.getElementById('newNoteInput').value = note.text || '';
+      document.getElementById('newNoteCategory').value = note.category || 'Task';
+      updateEntryFormMode();
+      document.getElementById('newNoteTime').value = note.time || '';
+      document.getElementById('newNoteEndTime').value = note.endTime || '';
+      isTimeRangeMode = Boolean(note.endTime);
+      document.getElementById('newNoteEndTime').classList.toggle('hidden', !isTimeRangeMode);
+      document.getElementById('rangeBtnLabel').innerText = isTimeRangeMode ? 'Single Time' : '+ Time Range';
+      const extraReminder = (note.reminders || []).find(minutes => minutes !== 60 && minutes !== 15);
+      const reminderUnit = extraReminder && extraReminder % 1440 === 0
+        ? 'days'
+        : extraReminder && extraReminder % 60 === 0 ? 'hours' : 'minutes';
+      document.getElementById('newNoteReminder').value = extraReminder ? String(extraReminder / (reminderUnit === 'days' ? 1440 : reminderUnit === 'hours' ? 60 : 1)) : '';
+      document.getElementById('newNoteReminderUnit').value = reminderUnit;
+      document.getElementById('childNotesEditor').classList.remove('hidden');
+      document.getElementById('saveNoteBtn').innerText = 'Save Changes';
+      renderChildNotes();
+      document.getElementById('newNoteInput').focus();
+    }
+
+    function renderChildNotes() {
+      const container = document.getElementById('childNotesList');
+      const note = (subjectNotes[activeModalDateStr] || [])[editingNoteIndex];
+      container.innerHTML = '';
+      (note?.children || []).forEach((child, childIndex) => {
+        const row = document.createElement('div');
+        row.className = 'flex items-start justify-between gap-2 rounded-lg bg-white dark:bg-slate-900 px-2.5 py-2 text-sm border border-sky-100 dark:border-slate-700';
+        const bullet = document.createElement('span');
+        bullet.className = 'mt-0.5 text-sky-600 dark:text-teal-400';
+        bullet.setAttribute('aria-hidden', 'true');
+        bullet.textContent = '•';
+        const text = document.createElement('span');
+        text.className = 'min-w-0 flex-1 break-words text-sm leading-relaxed';
+        text.textContent = child.text;
+        const editButton = document.createElement('button');
+        editButton.type = 'button';
+        editButton.className = 'text-sky-600 font-semibold';
+        editButton.textContent = 'Edit';
+        editButton.onclick = () => {
+          const updatedText = window.prompt('Edit this note', child.text);
+          if (updatedText === null) return;
+          if (!updatedText.trim()) {
+            showAppNotice('A note cannot be empty.');
+            return;
+          }
+          child.text = updatedText.trim();
+          saveSubjectNotes();
+          renderChildNotes();
+          renderCurrentView();
+        };
+        const deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.className = 'text-rose-600 font-semibold';
+        deleteButton.textContent = 'Delete';
+        deleteButton.onclick = () => {
+          note.children.splice(childIndex, 1);
+          saveSubjectNotes();
+          renderChildNotes();
+          renderCurrentView();
+        };
+        row.append(bullet, text, editButton, deleteButton);
+        container.appendChild(row);
+      });
+    }
+
+    function addChildNote() {
+      const note = (subjectNotes[activeModalDateStr] || [])[editingNoteIndex];
+      const input = document.getElementById('childNoteInput');
+      const text = input.value.trim();
+      if (!note || !text) return;
+      if (!Array.isArray(note.children)) note.children = [];
+      note.children.push({ text, createdAt: new Date().toISOString() });
+      input.value = '';
+      saveSubjectNotes();
+      renderChildNotes();
+      renderCurrentView();
+    }
+
+    // Render notes grouped under their respective Group
+    function renderGroupedModalNotes() {
+      const container = document.getElementById('modalNotesGroupedContainer');
+      const countEl = document.getElementById('modalNotesCount');
+      container.innerHTML = '';
+
+      const notes = subjectNotes[activeModalDateStr] || [];
+      countEl.innerText = `${notes.length} note${notes.length === 1 ? '' : 's'}`;
+
+      if (notes.length === 0) {
+        container.innerHTML = `
+          <div class="text-xs text-slate-400 dark:text-slate-500 text-center py-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
+            No notes added yet for this date.
+          </div>
+        `;
+        return;
+      }
+
+      // Group notes by courseCode
+      const groupsMap = {};
+      notes.forEach((note, index) => {
+        const grp = note.courseCode || 'General';
+        if (!groupsMap[grp]) groupsMap[grp] = [];
+        groupsMap[grp].push({ ...note, originalIndex: index });
+      });
+
+      // Render each group box
+      Object.keys(groupsMap).forEach(groupKey => {
+        const groupNotes = groupsMap[groupKey];
+        const color = SUBJECT_COLORS[groupKey] || SUBJECT_COLORS['General'];
+        const groupTitle = GROUP_NAMES[groupKey] || groupKey;
+
+        const groupWrapper = document.createElement('div');
+        groupWrapper.className = `p-3 rounded-2xl border ${color.border} ${color.bg} space-y-2`;
+
+        // Group Header
+        groupWrapper.innerHTML = `
+          <div class="flex items-center justify-between pb-1 border-b ${color.border}">
+            <div class="flex items-center gap-1.5 font-bold text-xs ${color.text} truncate">
+              <span class="w-2 h-2 rounded-full ${color.dot}"></span>
+              <span class="truncate">${escapeHTML(groupTitle)}</span>
+            </div>
+            <span class="text-[10px] font-semibold opacity-75">${groupNotes.length}</span>
+          </div>
+          <div class="space-y-1.5" id="groupNotesList_${groupKey.replace(/\s+/g, '_')}"></div>
+        `;
+
+        const listDiv = groupWrapper.querySelector(`#groupNotesList_${groupKey.replace(/\s+/g, '_')}`);
+
+        groupNotes.forEach(item => {
+          const row = document.createElement('div');
+          row.className = `p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 text-xs transition ${
+            item.completed ? 'opacity-60 text-slate-400' : 'text-slate-800 dark:text-slate-200'
+          }`;
+
+          row.innerHTML = `
+            <div class="flex items-center gap-2.5 flex-1 min-w-0">
+              <input type="checkbox" ${item.completed ? 'checked' : ''} onchange="toggleNoteStatus(${item.originalIndex})" class="rounded text-teal-600 focus:ring-teal-400 cursor-pointer">
+              <div class="flex flex-col min-w-0">
+                <div class="flex items-center gap-1.5">
+                  <span class="text-[10px] font-bold px-1.5 py-0.2 rounded ${color.badge}">${escapeHTML(item.category)}</span>
+                  ${item.time ? `<span class="text-[10px] font-semibold text-slate-500 dark:text-slate-400"><i data-lucide="clock" class="inline w-3 h-3 -mt-0.5"></i> ${escapeHTML(item.time)}</span>` : ''}
+                </div>
+                <span class="truncate mt-0.5 font-medium ${item.completed ? 'line-through text-slate-400' : ''}">${escapeHTML(item.text)}</span>
+                ${(item.children || []).slice(0, 2).map(child => `<span class="truncate text-[10px] text-slate-500">↳ ${escapeHTML(child.text)}</span>`).join('')}
+              </div>
+            </div>
+            <button onclick="editNote(${item.originalIndex})" class="text-sky-600 hover:text-sky-800 p-1 transition" title="Edit note or schedule">
+              <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="deleteNote(${item.originalIndex})" class="text-slate-400 hover:text-rose-600 p-1 transition" title="Delete note">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+          `;
+          listDiv.appendChild(row);
+        });
+
+        container.appendChild(groupWrapper);
+      });
+
+      lucide.createIcons();
+    }
+
+    function addSubjectNote() {
+      const input = document.getElementById('newNoteInput');
+      const courseSelect = document.getElementById('newNoteCourse');
+      const categorySelect = document.getElementById('newNoteCategory');
+      const timeInput = document.getElementById('newNoteTime');
+      const endTimeInput = document.getElementById('newNoteEndTime');
+      const targetDate = document.getElementById('newNoteDate').value;
+      const text = input.value.trim();
+      const category = categorySelect.value;
+      const startTime = timeInput.value || '';
+      const endTime = isTimeRangeMode ? (endTimeInput.value || '') : '';
+      const wasEditing = editingNoteIndex !== null;
+
+      if (!text || !targetDate) {
+        showAppNotice('Enter a title and date before saving.');
+        return;
+      }
+      if (category === 'Schedule' && (!startTime || !endTime)) {
+        showAppNotice('A schedule needs both a start and end time.');
+        return;
+      }
+      if (endTime && startTime && timeStringToHours(endTime) <= timeStringToHours(startTime)) {
+        showAppNotice('The end time must be later than the start time.');
+        return;
+      }
+
+      const reminderValue = Number(document.getElementById('newNoteReminder').value);
+      const reminderUnit = document.getElementById('newNoteReminderUnit').value;
+      const customReminder = Number.isFinite(reminderValue) && reminderValue > 0
+        ? reminderValue * (reminderUnit === 'days' ? 1440 : reminderUnit === 'hours' ? 60 : 1)
+        : null;
+      const oldDate = activeModalDateStr;
+      const oldNotes = subjectNotes[oldDate] || [];
+      const existing = editingNoteIndex === null ? null : oldNotes[editingNoteIndex];
+      const updatedNote = {
+        ...(existing || {}),
+        id: existing?.id || `item-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        courseCode: courseSelect.value,
+        text,
+        category,
+        time: startTime,
+        endTime,
+        status: existing?.status || (existing?.completed ? 'done' : 'backlog'),
+        reminders: [...new Set([60, 15, ...(customReminder ? [customReminder] : [])])],
+        children: existing?.children || [],
+        completed: existing?.completed || false,
+        createdAt: existing?.createdAt || new Date().toISOString()
+      };
+
+      const overlaps = findOverlappingItems(targetDate, updatedNote, oldDate === targetDate ? editingNoteIndex : null);
+      if (editingNoteIndex !== null) oldNotes.splice(editingNoteIndex, 1);
+      if (oldDate !== targetDate && updatedNote.sessionKey) delete updatedNote.sessionKey;
+      if (oldNotes.length === 0) delete subjectNotes[oldDate];
+      if (!subjectNotes[targetDate]) subjectNotes[targetDate] = [];
+      subjectNotes[targetDate].push(updatedNote);
+      activeModalDateStr = targetDate;
+      editingNoteIndex = subjectNotes[targetDate].length - 1;
+      const savedIndex = editingNoteIndex;
+      const targetDateObj = parseISODate(targetDate);
+      document.getElementById('modalDateTitle').innerText = targetDateObj.toLocaleDateString('en-US', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+      });
+      document.getElementById('modalPhaseTag').innerText = getAcademicStatus(targetDateObj).badgeText;
+      document.getElementById('newNoteDate').value = targetDate;
+      saveSubjectNotes();
+      requestNotificationPermission();
+      showAppNotice(wasEditing ? 'Changes saved.' : 'Saved.');
+      if (overlaps.length) {
+        sendNotification(
+          'Schedule overlap',
+          `"${text}" overlaps ${overlaps.map(item => item.title).join(', ')}.`
+        );
+      }
+      document.getElementById('childNotesEditor').classList.remove('hidden');
+      document.getElementById('saveNoteBtn').innerText = 'Save Changes';
+      if (oldDate !== targetDate) {
+        openModalForDate(targetDate, updatedNote.courseCode);
+        editNote(savedIndex);
+      } else {
+        renderChildNotes();
+        renderGroupedModalNotes();
+      }
+      renderCurrentView();
+    }
+
+    function findOverlappingItems(isoDate, candidate, excludedIndex = null) {
+      const candidateStart = timeStringToHours(candidate.time);
+      if (candidateStart === null) return [];
+      const candidateEnd = timeStringToHours(candidate.endTime) || candidateStart + 0.75;
+      const overlapping = [];
+      (subjectNotes[isoDate] || []).forEach((note, index) => {
+        if (index === excludedIndex || note.sessionKey) return;
+        const start = timeStringToHours(note.time);
+        if (start === null) return;
+        const end = timeStringToHours(note.endTime) || start + 0.75;
+        if (candidateStart < end && candidateEnd > start) overlapping.push({ title: note.text });
+      });
+      const dateObj = parseISODate(isoDate);
+      if (getAcademicStatus(dateObj).isTeaching) {
+        WEEKLY_CLASSES.filter(classItem => classItem.dayOfWeek === dateObj.getDay()).forEach(classItem => {
+          if (candidate.sessionKey === `${isoDate}_${classItem.courseCode}_${classItem.startTime}`) return;
+          const start = timeStringToHours(classItem.startTime);
+          const end = timeStringToHours(classItem.endTime);
+          if (candidateStart < end && candidateEnd > start) overlapping.push({ title: classItem.fullName });
+        });
+      }
+      return overlapping;
+    }
+
+    function checkReminder(isoDate, time, reminders, reminderKeyPrefix, title, now) {
+      if (timeStringToHours(time) === null) return;
+      const [hour, minute] = time.split(':').map(Number);
+      const eventDate = parseISODate(isoDate);
+      eventDate.setHours(hour, minute, 0, 0);
+      reminders.forEach(minutesBefore => {
+        const triggerAt = eventDate.getTime() - minutesBefore * 60000;
+        const reminderKey = `${reminderKeyPrefix}-${isoDate}-${minutesBefore}`;
+        if (now >= triggerAt && now < triggerAt + 5 * 60000 && now < eventDate.getTime() && !firedReminders.has(reminderKey)) {
+          firedReminders.add(reminderKey);
+          try {
+            localStorage.setItem('academic_fired_reminders_v1', JSON.stringify([...firedReminders]));
+          } catch (error) {
+            console.error('Could not save reminder state', error);
+          }
+          sendNotification('Upcoming reminder', `${title} starts at ${time}.`);
+        }
+      });
+    }
+
+    function checkUpcomingReminders() {
+      const now = Date.now();
+      Object.entries(subjectNotes).forEach(([isoDate, notes]) => {
+        notes.forEach(note => {
+          if (Array.isArray(note.reminders)) {
+            checkReminder(isoDate, note.time, note.reminders, note.id, note.text, now);
+          }
+        });
+      });
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      for (let dayOffset = 0; dayOffset <= 7; dayOffset++) {
+        const classDate = new Date(today);
+        classDate.setDate(today.getDate() + dayOffset);
+        if (!getAcademicStatus(classDate).isTeaching) continue;
+        const isoDate = getISODate(classDate);
+        WEEKLY_CLASSES.filter(classItem => classItem.dayOfWeek === classDate.getDay()).forEach(classItem => {
+          const sessionKey = getClassSessionKey(isoDate, classItem);
+          const classStatus = getClassSessionStatus(isoDate, classItem);
+          if (classStatus && classStatus.type !== 'online') return;
+          checkReminder(isoDate, classItem.startTime, [60, 15], `class-${sessionKey}`, classItem.fullName, now);
+        });
+      }
+      Object.entries(classSessionStatuses).forEach(([sessionKey, status]) => {
+        if (!status || !CLASS_STATUS_TYPES.includes(status.type)) return;
+        if (status.type === 'rescheduled' && status.replacementDate && status.replacementStartTime) {
+          checkReminder(
+            status.replacementDate,
+            status.replacementStartTime,
+            [60, 15],
+            `replacement-${sessionKey}`,
+            status.classData?.fullName || 'Rescheduled class',
+            now
+          );
+        } else if (status.type === 'tba' && status.followUpAt) {
+          const followUpAt = new Date(status.followUpAt).getTime();
+          const reminderKey = `class-followup-${sessionKey}-${status.followUpAt}`;
+          if (now >= followUpAt && now < followUpAt + 5 * 60000 && !firedReminders.has(reminderKey)) {
+            firedReminders.add(reminderKey);
+            try {
+              localStorage.setItem('academic_fired_reminders_v1', JSON.stringify([...firedReminders]));
+            } catch (error) {
+              console.error('Could not save class follow-up reminder state', error);
+            }
+            sendNotification(
+              'Class follow-up reminder',
+              `Check for replacement details for ${status.classData?.fullName || 'your class'}.`
+            );
+          }
+        }
+      });
+    }
+
+    /* ==========================================================================
+       6B. CLASS SESSION DEDICATED NOTES INTERFACE
+       ========================================================================== */
+    function openClassSessionModal(isoDateStr, classObj, isReplacement = false) {
+      activeModalDateStr = isoDateStr;
+      activeSessionData = classObj;
+      activeSessionKey = getClassSessionKey(isoDateStr, classObj);
+
+      const dateObj = parseISODate(isoDateStr);
+      const options = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
+      const classStatus = getClassSessionStatus(isoDateStr, classObj);
+
+      document.getElementById('sessionTypeBadge').innerText = classObj.type;
+      document.getElementById('sessionOnlineBadge').classList.toggle('hidden', classStatus?.type !== 'online');
+      document.getElementById('sessionTitleText').innerText = classObj.fullName;
+      document.getElementById('sessionMetaText').innerHTML = isReplacement && classStatus
+        ? `Replacement: ${parseISODate(classStatus.replacementDate).toLocaleDateString('en-US', options)} • ${escapeHTML(classStatus.replacementStartTime)} - ${escapeHTML(classStatus.replacementEndTime)} • ${classLocationMarkup(classStatus.meetingRoomLink || classObj.room)}`
+        : `${dateObj.toLocaleDateString('en-US', options)} • ${escapeHTML(classObj.startTime)} - ${escapeHTML(classObj.endTime)}${classStatus?.type === 'online' ? '' : ` • ${classLocationMarkup(classObj.room)}`}`;
+      updateActiveSessionStatusSummary();
+      renderClassSessionNotes();
+      document.getElementById('classSessionModal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function updateActiveSessionStatusSummary() {
+      const summary = document.getElementById('sessionStatusSummary');
+      const badge = document.getElementById('sessionExceptionBadge');
+      const text = document.getElementById('sessionExceptionText');
+      if (!summary || !activeSessionData || !activeModalDateStr) return;
+      const status = getClassSessionStatus(activeModalDateStr, activeSessionData);
+      summary.classList.toggle('hidden', !status);
+      if (!status) return;
+
+      badge.innerHTML = classStatusBadgeMarkup(status);
+      if (status.type === 'rescheduled') {
+        text.innerHTML = `Replacement: ${escapeHTML(status.replacementDate)} · ${escapeHTML(status.replacementStartTime)}–${escapeHTML(status.replacementEndTime)}${status.meetingRoomLink ? ` · ${classLocationMarkup(status.meetingRoomLink)}` : ''}`;
+      } else if (status.type === 'blended') {
+        text.textContent = status.notes || 'Self-paced tasks or materials assigned.';
+      } else if (status.type === 'tba') {
+        text.textContent = status.followUpAt
+          ? 'Replacement details are pending. A follow-up reminder is set.'
+          : 'Replacement details will be confirmed later by the lecturer.';
+      } else if (status.type === 'online') {
+        text.textContent = 'This class will be held online at its scheduled time.';
+      } else {
+        text.textContent = status.reason || 'Class dismissed with no replacement.';
+      }
+      lucide.createIcons();
+    }
+
+    function openClassStatusModal(initialType = null) {
+      if (!activeSessionData || !activeModalDateStr) return;
+      const status = getClassSessionStatus(activeModalDateStr, activeSessionData);
+      const selectedType = initialType || status?.type || '';
+      document.querySelectorAll('input[name="classStatusType"]').forEach(radio => {
+        radio.checked = radio.value === selectedType;
+      });
+      document.getElementById('classReplacementDate').value = status?.replacementDate || activeModalDateStr;
+      document.getElementById('classReplacementStart').value = status?.replacementStartTime || activeSessionData.startTime;
+      document.getElementById('classReplacementEnd').value = status?.replacementEndTime || activeSessionData.endTime;
+      document.getElementById('classReplacementLocation').value = status?.meetingRoomLink || activeSessionData.room;
+      document.getElementById('classBlendedNotes').value = status?.notes || '';
+      document.getElementById('classFollowUpNextWeek').checked = Boolean(status?.followUpAt);
+      document.getElementById('classCancellationReason').value = status?.reason || '';
+      document.getElementById('clearClassStatusButton').classList.toggle('hidden', !status);
+      renderClassStatusFields();
+      document.getElementById('classStatusModal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function renderClassStatusFields() {
+      const selected = document.querySelector('input[name="classStatusType"]:checked')?.value;
+      document.getElementById('rescheduledFields').classList.toggle('hidden', selected !== 'rescheduled');
+      document.getElementById('blendedFields').classList.toggle('hidden', selected !== 'blended');
+      document.getElementById('tbaFields').classList.toggle('hidden', selected !== 'tba');
+      document.getElementById('cancelledFields').classList.toggle('hidden', selected !== 'cancelled');
+    }
+
+    function saveClassSessionStatus() {
+      if (!activeSessionData || !activeModalDateStr) return;
+      const type = document.querySelector('input[name="classStatusType"]:checked')?.value;
+      if (!CLASS_STATUS_TYPES.includes(type)) {
+        showAppNotice('Choose a class status before saving.');
+        return;
+      }
+
+      const status = {
+        type,
+        sourceDate: activeModalDateStr,
+        classData: {
+          courseCode: activeSessionData.courseCode,
+          fullName: activeSessionData.fullName,
+          type: activeSessionData.type,
+          startTime: activeSessionData.startTime,
+          endTime: activeSessionData.endTime,
+          room: activeSessionData.room
+        },
+        updatedAt: new Date().toISOString()
+      };
+
+      if (type === 'rescheduled') {
+        status.replacementDate = document.getElementById('classReplacementDate').value;
+        status.replacementStartTime = document.getElementById('classReplacementStart').value;
+        status.replacementEndTime = document.getElementById('classReplacementEnd').value;
+        status.meetingRoomLink = document.getElementById('classReplacementLocation').value.trim();
+        if (!status.replacementDate || !status.replacementStartTime || !status.replacementEndTime) {
+          showAppNotice('Enter the replacement date, start time, and end time.');
+          return;
+        }
+        if (timeStringToHours(status.replacementEndTime) <= timeStringToHours(status.replacementStartTime)) {
+          showAppNotice('The replacement end time must be later than its start time.');
+          return;
+        }
+      } else if (type === 'blended') {
+        status.notes = document.getElementById('classBlendedNotes').value.trim();
+      } else if (type === 'tba') {
+        status.followUpAt = document.getElementById('classFollowUpNextWeek').checked
+          ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+          : null;
+      } else if (type === 'cancelled') {
+        status.reason = document.getElementById('classCancellationReason').value.trim();
+      }
+
+      const previousStatus = classSessionStatuses[activeSessionKey];
+      classSessionStatuses[activeSessionKey] = status;
+      if (!saveClassSessionStatuses()) {
+        if (previousStatus) classSessionStatuses[activeSessionKey] = previousStatus;
+        else delete classSessionStatuses[activeSessionKey];
+        return;
+      }
+      closeClassStatusModal();
+      updateActiveSessionStatusSummary();
+      renderCurrentView();
+      if (type === 'tba' && status.followUpAt) requestNotificationPermission();
+      showAppNotice('Class status updated.');
+    }
+
+    function clearClassSessionStatus() {
+      if (!activeSessionKey) return;
+      const previousStatus = classSessionStatuses[activeSessionKey];
+      delete classSessionStatuses[activeSessionKey];
+      if (!saveClassSessionStatuses()) {
+        if (previousStatus) classSessionStatuses[activeSessionKey] = previousStatus;
+        return;
+      }
+      closeClassStatusModal();
+      updateActiveSessionStatusSummary();
+      renderCurrentView();
+      showAppNotice('Class restored to its scheduled status.');
+    }
+
+    function closeClassStatusModal() {
+      document.getElementById('classStatusModal').classList.add('hidden');
+    }
+
+    function renderClassSessionNotes() {
+      const container = document.getElementById('sessionNotesList');
+      container.innerHTML = '';
+      const notes = subjectNotes[activeModalDateStr] || [];
+      const sessionNotes = notes
+        .map((n, idx) => ({ ...n, origIdx: idx }))
+        .filter(n => n.sessionKey === activeSessionKey);
+
+      if (sessionNotes.length === 0) {
+        container.innerHTML = `
+          <div class="text-xs text-slate-400 dark:text-slate-500 text-center py-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+            No notes inside this class session yet.
+          </div>
+        `;
+        return;
+      }
+
+      sessionNotes.forEach(item => {
+        const row = document.createElement('div');
+        row.className = `p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3 text-xs ${
+          item.completed ? 'opacity-60 text-slate-400' : 'text-slate-800 dark:text-slate-200'
+        }`;
+        row.innerHTML = `
+          <div class="flex items-center gap-2.5 flex-1 min-w-0">
+            <input type="checkbox" ${item.completed ? 'checked' : ''} onchange="toggleNoteStatus(${item.origIdx}); renderClassSessionNotes();" class="rounded text-teal-600 focus:ring-teal-400 cursor-pointer">
+            <div class="flex flex-col min-w-0">
+              <span class="text-[9px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400">${escapeHTML(item.category)}</span>
+              <span class="truncate font-medium ${item.completed ? 'line-through text-slate-400' : ''}">${escapeHTML(item.text)}</span>
+            </div>
+          </div>
+          <div class="flex items-center">
+            <button onclick="editSessionNote(${item.origIdx})" class="text-sky-600 hover:text-sky-800 p-1 transition" title="Edit note">
+              <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="deleteNote(${item.origIdx}); renderClassSessionNotes();" class="text-slate-400 hover:text-rose-600 p-1 transition" title="Delete note">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        `;
+        container.appendChild(row);
+      });
+      lucide.createIcons();
+    }
+
+    function addNoteToActiveSession() {
+      const input = document.getElementById('sessionNoteInput');
+      const categorySelect = document.getElementById('sessionNoteCategory');
+      const text = input.value.trim();
+
+      if (!text || !activeModalDateStr || !activeSessionKey || !activeSessionData) return;
+
+      if (!subjectNotes[activeModalDateStr]) {
+        subjectNotes[activeModalDateStr] = [];
+      }
+
+      subjectNotes[activeModalDateStr].push({
+        id: `item-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        courseCode: activeSessionData.courseCode,
+        sessionKey: activeSessionKey,
+        text: text,
+        category: categorySelect.value,
+        time: activeSessionData.startTime,
+        endTime: activeSessionData.endTime,
+        reminders: [60, 15],
+        children: [],
+        completed: false,
+        createdAt: new Date().toISOString()
+      });
+
+      saveSubjectNotes();
+      requestNotificationPermission();
+      input.value = '';
+      renderClassSessionNotes();
+      renderCurrentView();
+    }
+
+    function editSessionNote(index) {
+      const date = activeModalDateStr;
+      const courseCode = activeSessionData?.courseCode;
+      closeClassSessionModal();
+      openModalForDate(date, courseCode);
+      editNote(index);
+    }
+
+    function closeClassSessionModal() {
+      document.getElementById('classSessionModal').classList.add('hidden');
+      closeClassStatusModal();
+      activeSessionKey = null;
+      activeSessionData = null;
+    }
+
+    function toggleNoteStatus(index) {
+      if (subjectNotes[activeModalDateStr] && subjectNotes[activeModalDateStr][index]) {
+        const note = subjectNotes[activeModalDateStr][index];
+        note.completed = !note.completed;
+        note.status = note.completed ? 'done' : 'backlog';
+        saveSubjectNotes();
+        renderGroupedModalNotes();
+        renderCurrentView();
+      }
+    }
+
+    function deleteNote(index) {
+      if (subjectNotes[activeModalDateStr]) {
+        subjectNotes[activeModalDateStr].splice(index, 1);
+        if (editingNoteIndex === index) {
+          editingNoteIndex = null;
+          document.getElementById('childNotesEditor').classList.add('hidden');
+          document.getElementById('newNoteInput').value = '';
+          document.getElementById('newNoteCategory').value = 'Task';
+          updateEntryFormMode();
+        } else if (editingNoteIndex !== null && editingNoteIndex > index) {
+          editingNoteIndex--;
+        }
+        if (subjectNotes[activeModalDateStr].length === 0) {
+          delete subjectNotes[activeModalDateStr];
+        }
+        saveSubjectNotes();
+        renderGroupedModalNotes();
+        renderCurrentView();
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('dayModal').classList.add('hidden');
+      activeModalDateStr = null;
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeModal();
+        closeClassSessionModal();
+        closeTodoSidebar();
+        closeCountdownDropdown();
+      }
+    });
+
+    document.addEventListener('click', event => {
+      if (!document.getElementById('countdownWidget').contains(event.target)) {
+        closeCountdownDropdown();
+      }
+    });
+
+    document.getElementById('dayModal').addEventListener('click', (e) => {
+      if (e.target.id === 'dayModal') closeModal();
+    });
+
+    document.getElementById('classSessionModal').addEventListener('click', (e) => {
+      if (e.target.id === 'classSessionModal') closeClassSessionModal();
+    });
+
+    document.getElementById('classStatusModal').addEventListener('click', (e) => {
+      if (e.target.id === 'classStatusModal') closeClassStatusModal();
+    });
+
+    /* ==========================================================================
+       7. INITIALIZATION
+       ========================================================================== */
+    window.onload = function() {
+      applyTheme();
+      initializeTimetableFilters();
+      switchView('week');
+      renderCurrentView();
+      renderTodoList();
+      document.getElementById('todoForm').addEventListener('submit', addTodoItem);
+      setupInstallableApp();
+      renderCountdowns();
+      window.setInterval(renderCountdowns, 1000);
+      checkUpcomingReminders();
+      window.setInterval(checkUpcomingReminders, 30000);
+    };
+  </script>
+</body>
+</html>

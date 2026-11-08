@@ -674,7 +674,7 @@
         <button onclick="closeModal()" class="px-4 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition">
           Close
         </button>
-        <span class="text-[11px] text-slate-400 dark:text-slate-500">Auto-saved to browser</span>
+        <span class="text-[11px] text-slate-400 dark:text-slate-500">Auto-saved; syncs to Supabase</span>
       </div>
 
     </div>
@@ -858,7 +858,7 @@
     </div>
   </div>
 
-  <!-- SUPABASE CONNECTION & ACCOUNT MODAL -->
+  <!-- SHARED SUPABASE SYNC STATUS -->
   <div id="cloudModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-slate-900/50 p-3 backdrop-blur-sm">
     <section class="w-full max-w-lg overflow-hidden rounded-3xl border border-sky-100 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900" role="dialog" aria-modal="true" aria-labelledby="cloudModalTitle">
       <header class="flex items-center justify-between border-b border-slate-100 p-4 dark:border-slate-800 sm:p-5">
@@ -871,8 +871,8 @@
         </button>
       </header>
       <div class="space-y-4 p-4 sm:p-5">
-        <p id="cloudAccountLabel" class="text-xs leading-relaxed text-slate-600 dark:text-slate-300">No email or password sign-in is required. Supabase creates a private anonymous session for this browser.</p>
-        <p id="cloudConnectionStatus" role="status" aria-live="polite" class="text-xs text-slate-500 dark:text-slate-400">This planner is currently saving data in this browser only.</p>
+        <p id="cloudAccountLabel" class="text-xs leading-relaxed text-slate-600 dark:text-slate-300">Your devices use the same shared planner. Anyone with the project URL and public key can view and edit its data.</p>
+        <p id="cloudConnectionStatus" role="status" aria-live="polite" class="text-xs text-slate-500 dark:text-slate-400">Connecting to the shared Supabase planner…</p>
       </div>
     </section>
   </div>
@@ -1142,18 +1142,19 @@
       if (!Array.isArray(note.children)) note.children = [];
     }));
 
-    const LOCAL_CLOUD_OWNER_KEY = 'planner_local_cloud_owner_v1';
-    const SUPABASE_STATE_TABLE = 'planner_user_data';
+    const SUPABASE_STATE_TABLE = 'planner_shared_state';
+    const SHARED_PLANNER_KEY = 'main';
     const DEFAULT_SUPABASE_URL = 'https://nveryyrmydhyuzdwdxou.supabase.co';
     const DEFAULT_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_LSCuk0cdJnv5OgUL14rsOw_FhcmON_g';
     let supabaseClient = null;
-    let cloudUser = null;
     let cloudStateReady = false;
     let cloudSyncLocalDirty = false;
     let cloudSyncInProgress = false;
     let lastCloudUpdatedAt = null;
     let cloudSyncTimer = null;
     let cloudSyncQueue = Promise.resolve();
+    let cloudRealtimeChannel = null;
+    let cloudInitializationPromise = null;
 
     function getPlannerCloudState() {
       return {
@@ -1180,6 +1181,7 @@
     function openCloudModal() {
       document.getElementById('cloudModal').classList.remove('hidden');
       document.getElementById('cloudModal').classList.add('flex');
+      if (!cloudStateReady) initializeCloudPersistence();
     }
 
     function closeCloudModal() {
@@ -1192,19 +1194,18 @@
         throw new Error('Supabase client library did not load. Check your internet connection and reload the app.');
       }
       return window.supabase.createClient(url, key, {
-        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
       });
     }
 
-    async function activateCloudSession(user) {
-      if (!user || !supabaseClient) throw new Error('Supabase did not return a signed-in user.');
+    async function initializeSharedPlanner() {
+      if (!supabaseClient) throw new Error('Supabase client is not available.');
       cloudStateReady = false;
       updateCloudStatus('Loading your planner data…');
       const { data, error } = await supabaseClient
         .from(SUPABASE_STATE_TABLE)
         .select('data, updated_at')
-        .eq('user_id', user.id)
-        .eq('state_key', 'planner_state')
+        .eq('state_key', SHARED_PLANNER_KEY)
         .maybeSingle();
       if (error) throw error;
 
@@ -1212,31 +1213,26 @@
         applyPlannerCloudState(data.data);
         lastCloudUpdatedAt = data.updated_at;
       } else {
-        const localOwner = localStorage.getItem(LOCAL_CLOUD_OWNER_KEY);
-        const initialState = localOwner && localOwner !== user.id
-          ? { subjectNotes: {}, classSessionStatuses: {}, todoItems: { daily: [], weekly: [], monthly: [] }, firedReminders: [] }
-          : getPlannerCloudState();
+        const initialState = getPlannerCloudState();
         applyPlannerCloudState(initialState);
         const updatedAt = new Date().toISOString();
         const { error: saveError } = await supabaseClient.from(SUPABASE_STATE_TABLE).upsert({
-          user_id: user.id,
-          state_key: 'planner_state',
+          state_key: SHARED_PLANNER_KEY,
           data: initialState,
           updated_at: updatedAt
-        }, { onConflict: 'user_id,state_key' });
+        }, { onConflict: 'state_key' });
         if (saveError) throw saveError;
         lastCloudUpdatedAt = updatedAt;
       }
 
-      localStorage.setItem(LOCAL_CLOUD_OWNER_KEY, user.id);
-      cloudUser = user;
       cloudStateReady = true;
       cloudSyncLocalDirty = false;
-      document.getElementById('cloudAccountLabel').textContent = 'This browser has a private anonymous Supabase session. Keep this browser data to retain access to this planner.';
-      updateCloudStatus('Connected to Supabase. Changes sync automatically.', true);
+      document.getElementById('cloudAccountLabel').textContent = 'This app uses one shared planner across your devices. Anyone with the project URL and public key can view and edit the data.';
+      updateCloudStatus('Shared planner connected. Changes sync automatically.', true);
       renderCurrentView();
       renderTodoList();
       renderCountdowns();
+      subscribeToSharedPlannerChanges();
     }
 
     function applyPlannerCloudState(state) {
@@ -1275,92 +1271,113 @@
     }
 
     async function initializeCloudPersistence() {
-      try {
-        supabaseClient = createSupabaseClient(DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_PUBLISHABLE_KEY);
-        const { data, error } = await supabaseClient.auth.getSession();
-        if (error) throw error;
-        if (data.session) {
-          await activateCloudSession(data.session.user);
-        } else {
-          updateCloudStatus('Starting your private Supabase session…');
-          const { data: anonymousData, error: anonymousError } = await supabaseClient.auth.signInAnonymously();
-          if (anonymousError) throw anonymousError;
-          if (!anonymousData.user) throw new Error('Supabase did not create an anonymous session.');
-          await activateCloudSession(anonymousData.user);
+      if (cloudInitializationPromise) return cloudInitializationPromise;
+      cloudInitializationPromise = (async () => {
+        try {
+          supabaseClient = createSupabaseClient(DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_PUBLISHABLE_KEY);
+          await initializeSharedPlanner();
+        } catch (error) {
+          cloudStateReady = false;
+          console.error('Could not initialize Supabase sync', error);
+          document.getElementById('cloudAccountLabel').textContent = 'Cloud sync is unavailable; changes are currently saved only in this browser.';
+          updateCloudStatus(`Supabase sync error: ${error.message}`);
+        } finally {
+          cloudInitializationPromise = null;
         }
-      } catch (error) {
-        cloudUser = null;
-        cloudStateReady = false;
-        console.error('Could not initialize Supabase sync', error);
-        const message = /anonymous.*disabled|anonymous.*not.*enabled/i.test(error.message || '')
-          ? 'Enable Anonymous Sign-Ins in Supabase → Authentication → Sign In / Providers, then reload the planner.'
-          : `Supabase connection error: ${error.message}`;
-        document.getElementById('cloudAccountLabel').textContent = 'The planner will keep saving locally until automatic cloud access is available.';
-        updateCloudStatus(message);
-      }
+      })();
+      return cloudInitializationPromise;
     }
 
     function scheduleCloudSync() {
-      if (!cloudUser || !cloudStateReady || !supabaseClient) return;
+      if (!cloudStateReady || !supabaseClient) return;
       cloudSyncLocalDirty = true;
       clearTimeout(cloudSyncTimer);
-      const userId = cloudUser.id;
       cloudSyncTimer = setTimeout(() => {
         cloudSyncTimer = null;
-        enqueueCloudSync(userId);
+        enqueueCloudSync();
       }, 600);
     }
 
-    function enqueueCloudSync(userId) {
+    function enqueueCloudSync() {
       const state = getPlannerCloudState();
       const updatedAt = new Date().toISOString();
       cloudSyncQueue = cloudSyncQueue.then(async () => {
-        if (!cloudUser || cloudUser.id !== userId || !supabaseClient) return;
+        if (!cloudStateReady || !supabaseClient) return;
         cloudSyncInProgress = true;
         cloudSyncLocalDirty = false;
         const { error } = await supabaseClient.from(SUPABASE_STATE_TABLE).upsert({
-          user_id: userId,
-          state_key: 'planner_state',
+          state_key: SHARED_PLANNER_KEY,
           data: state,
           updated_at: updatedAt
-        }, { onConflict: 'user_id,state_key' });
+        }, { onConflict: 'state_key' });
         if (error) throw error;
         lastCloudUpdatedAt = updatedAt;
         cloudSyncInProgress = false;
-        if (cloudUser && cloudUser.id === userId) updateCloudStatus(`Synced as ${cloudUser.email || 'your account'}.`, true);
+        updateCloudStatus('Shared planner synced.', true);
       }).catch(error => {
         cloudSyncInProgress = false;
         cloudSyncLocalDirty = true;
         console.error('Could not sync planner data to Supabase', error);
-        if (cloudUser && cloudUser.id === userId) updateCloudStatus(`Cloud sync failed: ${error.message}`, true);
+        updateCloudStatus(`Cloud sync failed: ${error.message}`);
         showAppNotice('Cloud sync failed. Your changes are still saved in this browser.');
       });
       return cloudSyncQueue;
     }
 
     async function refreshCloudStateOnFocus() {
-      if (document.hidden || !cloudUser || !cloudStateReady || !supabaseClient || cloudSyncTimer || cloudSyncLocalDirty || cloudSyncInProgress) return;
-      const userId = cloudUser.id;
+      if (document.hidden || !cloudStateReady || !supabaseClient || cloudSyncTimer || cloudSyncLocalDirty || cloudSyncInProgress) return;
       try {
         const { data, error } = await supabaseClient
           .from(SUPABASE_STATE_TABLE)
           .select('data, updated_at')
-          .eq('user_id', userId)
-          .eq('state_key', 'planner_state')
+          .eq('state_key', SHARED_PLANNER_KEY)
           .maybeSingle();
         if (error) throw error;
-        if (!data || !cloudUser || cloudUser.id !== userId || cloudSyncLocalDirty || cloudSyncInProgress) return;
+        if (!data || cloudSyncLocalDirty || cloudSyncInProgress) return;
         if (lastCloudUpdatedAt && Date.parse(data.updated_at) <= Date.parse(lastCloudUpdatedAt)) return;
         applyPlannerCloudState(data.data);
         lastCloudUpdatedAt = data.updated_at;
         renderCurrentView();
         renderTodoList();
         renderCountdowns();
-        updateCloudStatus(`Updated from cloud as ${cloudUser.email || 'your account'}.`, true);
+        updateCloudStatus('Shared planner updated from cloud.', true);
       } catch (error) {
         console.error('Could not refresh planner data from Supabase', error);
         showAppNotice('Could not refresh planner data from the cloud. Your local copy is unchanged.');
       }
+    }
+
+    function subscribeToSharedPlannerChanges() {
+      if (!supabaseClient || cloudRealtimeChannel) return;
+      cloudRealtimeChannel = supabaseClient
+        .channel('shared-planner-changes')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: SUPABASE_STATE_TABLE,
+          filter: `state_key=eq.${SHARED_PLANNER_KEY}`
+        }, payload => {
+          const row = payload.new;
+          if (!row?.data || cloudSyncLocalDirty || cloudSyncInProgress) return;
+          if (lastCloudUpdatedAt && Date.parse(row.updated_at) <= Date.parse(lastCloudUpdatedAt)) return;
+          try {
+            applyPlannerCloudState(row.data);
+            lastCloudUpdatedAt = row.updated_at;
+            renderCurrentView();
+            renderTodoList();
+            renderCountdowns();
+            updateCloudStatus('Shared planner updated from another device.', true);
+          } catch (error) {
+            console.error('Could not apply shared planner update', error);
+            showAppNotice('Could not apply the update from another device.');
+          }
+        })
+        .subscribe(status => {
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            console.error(`Supabase Realtime subscription failed: ${status}`);
+            showAppNotice('Live sync is unavailable. The planner will refresh when this tab is reopened.');
+          }
+        });
     }
 
     function saveSubjectNotes() {

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'schedule-planner-v19';
+const CACHE_NAME = 'schedule-planner-v20';
 const APP_FILES = ['./', './index.html', './manifest.json', './app-icon.svg'];
 const EXTERNAL_APP_FILES = [
   'https://cdn.tailwindcss.com',

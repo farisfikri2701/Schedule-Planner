@@ -1,0 +1,20 @@
+{
+  "name": "Schedule Planner",
+  "short_name": "Planner",
+  "description": "A personal timetable, schedule, and to-do planner.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "prefer_related_applications": false,
+  "background_color": "#f6fbfa",
+  "theme_color": "#0ea5e9",
+  "icons": [
+    {
+      "src": "./app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

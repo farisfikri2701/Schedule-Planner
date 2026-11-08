@@ -863,38 +863,15 @@
     <section class="w-full max-w-lg overflow-hidden rounded-3xl border border-sky-100 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900" role="dialog" aria-modal="true" aria-labelledby="cloudModalTitle">
       <header class="flex items-center justify-between border-b border-slate-100 p-4 dark:border-slate-800 sm:p-5">
         <div>
-          <h2 id="cloudModalTitle" class="text-base font-bold text-slate-900 dark:text-white">Connect to Supabase</h2>
-          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Sync your planner between your devices.</p>
+          <h2 id="cloudModalTitle" class="text-base font-bold text-slate-900 dark:text-white">Automatic cloud sync</h2>
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">The planner connects to your Supabase project automatically.</p>
         </div>
         <button type="button" onclick="closeCloudModal()" aria-label="Close Supabase settings" class="rounded-xl p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
           <i data-lucide="x" class="h-4 w-4"></i>
         </button>
       </header>
       <div class="space-y-4 p-4 sm:p-5">
-        <div>
-          <label for="supabaseProjectUrl" class="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Project URL</label>
-          <input id="supabaseProjectUrl" type="url" autocomplete="url" placeholder="https://your-project.supabase.co" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
-        </div>
-        <div>
-          <label for="supabasePublishableKey" class="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Publishable key (or legacy anon key)</label>
-          <input id="supabasePublishableKey" type="password" autocomplete="off" placeholder="sb_publishable_..." class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
-        </div>
-        <button type="button" onclick="saveSupabaseConfig()" class="w-full rounded-xl bg-sky-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-sky-700">Save project settings</button>
-        <div class="rounded-xl border border-sky-100 bg-sky-50/70 p-3 text-[11px] leading-relaxed text-sky-900 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-200">
-          Use only your Supabase project URL and publishable/anon key here. Never put a service-role or secret key in this app. Run the SQL in <code>supabase-schema.sql</code> first.
-        </div>
-        <div id="cloudAuthSection" class="hidden space-y-3 border-t border-slate-100 pt-4 dark:border-slate-800">
-          <p id="cloudAccountLabel" class="text-xs font-semibold text-slate-700 dark:text-slate-200">Sign in to sync your planner.</p>
-          <div class="grid gap-2 sm:grid-cols-2">
-            <input id="cloudEmail" type="email" autocomplete="email" placeholder="Email address" class="min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm dark:border-slate-700 dark:bg-slate-950">
-            <input id="cloudPassword" type="password" autocomplete="current-password" placeholder="Password" class="min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm dark:border-slate-700 dark:bg-slate-950">
-          </div>
-          <div id="cloudAuthActions" class="flex flex-wrap gap-2">
-            <button type="button" onclick="signInToCloud()" class="flex-1 rounded-xl bg-teal-600 px-3 py-2.5 text-xs font-bold text-white hover:bg-teal-700">Sign in</button>
-            <button type="button" onclick="signUpForCloud()" class="flex-1 rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Create account</button>
-          </div>
-          <button id="cloudSignOutButton" type="button" onclick="signOutFromCloud()" class="hidden w-full rounded-xl border border-rose-200 px-3 py-2.5 text-xs font-bold text-rose-700 hover:bg-rose-50 dark:border-rose-900 dark:text-rose-300 dark:hover:bg-rose-950/40">Sign out</button>
-        </div>
+        <p id="cloudAccountLabel" class="text-xs leading-relaxed text-slate-600 dark:text-slate-300">No email or password sign-in is required. Supabase creates a private anonymous session for this browser.</p>
         <p id="cloudConnectionStatus" role="status" aria-live="polite" class="text-xs text-slate-500 dark:text-slate-400">This planner is currently saving data in this browser only.</p>
       </div>
     </section>
@@ -1165,7 +1142,6 @@
       if (!Array.isArray(note.children)) note.children = [];
     }));
 
-    const SUPABASE_CONFIG_KEY = 'planner_supabase_config_v1';
     const LOCAL_CLOUD_OWNER_KEY = 'planner_local_cloud_owner_v1';
     const SUPABASE_STATE_TABLE = 'planner_user_data';
     const DEFAULT_SUPABASE_URL = 'https://nveryyrmydhyuzdwdxou.supabase.co';
@@ -1204,29 +1180,11 @@
     function openCloudModal() {
       document.getElementById('cloudModal').classList.remove('hidden');
       document.getElementById('cloudModal').classList.add('flex');
-      const savedConfig = readSupabaseConfig();
-      if (!document.getElementById('supabaseProjectUrl').value) {
-        document.getElementById('supabaseProjectUrl').value = savedConfig?.url || DEFAULT_SUPABASE_URL;
-      }
-      if (!document.getElementById('supabasePublishableKey').value) {
-        document.getElementById('supabasePublishableKey').value = savedConfig?.key || DEFAULT_SUPABASE_PUBLISHABLE_KEY;
-      }
-      document.getElementById(supabaseClient || readSupabaseConfig() ? 'cloudEmail' : 'supabaseProjectUrl').focus();
     }
 
     function closeCloudModal() {
       document.getElementById('cloudModal').classList.add('hidden');
       document.getElementById('cloudModal').classList.remove('flex');
-    }
-
-    function readSupabaseConfig() {
-      try {
-        const config = JSON.parse(localStorage.getItem(SUPABASE_CONFIG_KEY) || 'null');
-        return config && typeof config.url === 'string' && typeof config.key === 'string' ? config : null;
-      } catch (error) {
-        console.error('Could not read Supabase project settings', error);
-        return null;
-      }
     }
 
     function createSupabaseClient(url, key) {
@@ -1236,90 +1194,6 @@
       return window.supabase.createClient(url, key, {
         auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
       });
-    }
-
-    function saveSupabaseConfig() {
-      const urlInput = document.getElementById('supabaseProjectUrl');
-      const keyInput = document.getElementById('supabasePublishableKey');
-      let projectUrl;
-      try {
-        projectUrl = new URL(urlInput.value.trim());
-        if (!['https:', 'http:'].includes(projectUrl.protocol) || (projectUrl.protocol === 'http:' && !['localhost', '127.0.0.1'].includes(projectUrl.hostname))) {
-          throw new Error('Use an HTTPS Supabase project URL.');
-        }
-      } catch (error) {
-        updateCloudStatus(error.message === 'Use an HTTPS Supabase project URL.' ? error.message : 'Enter a valid Supabase project URL.');
-        return;
-      }
-      const key = keyInput.value.trim();
-      if (!key) {
-        updateCloudStatus('Enter your Supabase publishable key (or legacy anon key).');
-        return;
-      }
-      try {
-        const config = { url: projectUrl.origin, key };
-        const nextClient = createSupabaseClient(config.url, config.key);
-        localStorage.setItem(SUPABASE_CONFIG_KEY, JSON.stringify(config));
-        if (supabaseClient && cloudUser) {
-          supabaseClient.auth.signOut({ scope: 'local' }).catch(error => console.warn('Previous Supabase session could not be cleared', error));
-        }
-        supabaseClient = nextClient;
-        cloudUser = null;
-        cloudStateReady = false;
-        updateCloudStatus('Project settings saved. Sign in or create an account to sync.');
-        document.getElementById('cloudAuthSection').classList.remove('hidden');
-      } catch (error) {
-        console.error('Could not configure Supabase', error);
-        updateCloudStatus(error.message || 'Could not configure Supabase.');
-      }
-    }
-
-    function validateCloudCredentials() {
-      const email = document.getElementById('cloudEmail').value.trim();
-      const password = document.getElementById('cloudPassword').value;
-      if (!supabaseClient) {
-        updateCloudStatus('Save your Supabase project settings first.');
-        return null;
-      }
-      if (!email || !password) {
-        updateCloudStatus('Enter your email address and password.');
-        return null;
-      }
-      return { email, password };
-    }
-
-    async function signInToCloud() {
-      const credentials = validateCloudCredentials();
-      if (!credentials) return;
-      updateCloudStatus('Signing in…');
-      try {
-        const { data, error } = await supabaseClient.auth.signInWithPassword(credentials);
-        if (error) throw error;
-        await activateCloudSession(data.user);
-        document.getElementById('cloudPassword').value = '';
-      } catch (error) {
-        console.error('Supabase sign-in failed', error);
-        updateCloudStatus(`Sign-in failed: ${error.message}`);
-      }
-    }
-
-    async function signUpForCloud() {
-      const credentials = validateCloudCredentials();
-      if (!credentials) return;
-      updateCloudStatus('Creating your account…');
-      try {
-        const { data, error } = await supabaseClient.auth.signUp(credentials);
-        if (error) throw error;
-        document.getElementById('cloudPassword').value = '';
-        if (!data.session || !data.user) {
-          updateCloudStatus('Account created. Check your email to confirm it, then sign in.');
-          return;
-        }
-        await activateCloudSession(data.user);
-      } catch (error) {
-        console.error('Supabase sign-up failed', error);
-        updateCloudStatus(`Account creation failed: ${error.message}`);
-      }
     }
 
     async function activateCloudSession(user) {
@@ -1358,11 +1232,8 @@
       cloudUser = user;
       cloudStateReady = true;
       cloudSyncLocalDirty = false;
-      document.getElementById('cloudAuthActions').classList.add('hidden');
-      document.getElementById('cloudSignOutButton').classList.remove('hidden');
-      document.getElementById('cloudAccountLabel').textContent = `Signed in as ${user.email || 'your account'}`;
-      document.getElementById('cloudPassword').value = '';
-      updateCloudStatus(`Connected as ${user.email || 'your account'}. Changes sync automatically.`, true);
+      document.getElementById('cloudAccountLabel').textContent = 'This browser has a private anonymous Supabase session. Keep this browser data to retain access to this planner.';
+      updateCloudStatus('Connected to Supabase. Changes sync automatically.', true);
       renderCurrentView();
       renderTodoList();
       renderCountdowns();
@@ -1404,29 +1275,28 @@
     }
 
     async function initializeCloudPersistence() {
-      const config = readSupabaseConfig() || {
-        url: DEFAULT_SUPABASE_URL,
-        key: DEFAULT_SUPABASE_PUBLISHABLE_KEY
-      };
-      if (!config) return;
-      document.getElementById('supabaseProjectUrl').value = config.url;
-      document.getElementById('supabasePublishableKey').value = config.key;
-      document.getElementById('cloudAuthSection').classList.remove('hidden');
       try {
-        supabaseClient = createSupabaseClient(config.url, config.key);
+        supabaseClient = createSupabaseClient(DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_PUBLISHABLE_KEY);
         const { data, error } = await supabaseClient.auth.getSession();
         if (error) throw error;
         if (data.session) {
           await activateCloudSession(data.session.user);
         } else {
-          document.getElementById('cloudAccountLabel').textContent = 'Sign in to sync your planner.';
-          updateCloudStatus('Project settings loaded. Sign in or create an account to sync.');
+          updateCloudStatus('Starting your private Supabase session…');
+          const { data: anonymousData, error: anonymousError } = await supabaseClient.auth.signInAnonymously();
+          if (anonymousError) throw anonymousError;
+          if (!anonymousData.user) throw new Error('Supabase did not create an anonymous session.');
+          await activateCloudSession(anonymousData.user);
         }
       } catch (error) {
         cloudUser = null;
         cloudStateReady = false;
         console.error('Could not initialize Supabase sync', error);
-        updateCloudStatus(`Supabase connection error: ${error.message}`);
+        const message = /anonymous.*disabled|anonymous.*not.*enabled/i.test(error.message || '')
+          ? 'Enable Anonymous Sign-Ins in Supabase → Authentication → Sign In / Providers, then reload the planner.'
+          : `Supabase connection error: ${error.message}`;
+        document.getElementById('cloudAccountLabel').textContent = 'The planner will keep saving locally until automatic cloud access is available.';
+        updateCloudStatus(message);
       }
     }
 
@@ -1491,29 +1361,6 @@
         console.error('Could not refresh planner data from Supabase', error);
         showAppNotice('Could not refresh planner data from the cloud. Your local copy is unchanged.');
       }
-    }
-
-    async function signOutFromCloud() {
-      if (cloudUser && cloudSyncTimer) {
-        clearTimeout(cloudSyncTimer);
-        cloudSyncTimer = null;
-        await enqueueCloudSync(cloudUser.id);
-      } else {
-        await cloudSyncQueue;
-      }
-      if (!supabaseClient) return;
-      const { error } = await supabaseClient.auth.signOut();
-      if (error) {
-        console.error('Supabase sign-out failed', error);
-        updateCloudStatus(`Sign-out failed: ${error.message}`, true);
-        return;
-      }
-      cloudUser = null;
-      cloudStateReady = false;
-      document.getElementById('cloudAuthActions').classList.remove('hidden');
-      document.getElementById('cloudSignOutButton').classList.add('hidden');
-      document.getElementById('cloudAccountLabel').textContent = 'Sign in to sync your planner.';
-      updateCloudStatus('Signed out. This planner is saving data in this browser only.');
     }
 
     function saveSubjectNotes() {
